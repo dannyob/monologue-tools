@@ -11,7 +11,7 @@ import json
 from zipfile import ZipFile
 import transformnotion
 
-BUTTONDOWN_API_KEY = 'your_api_key_here'  # Replace with your actual Buttondown API key
+BUTTONDOWN_API_KEY = os.getenv('BUTTONDOWN_API_KEY')  # Get Buttondown API key from environment variable
 
 current_file_path = Path(__file__).resolve().parent
 
