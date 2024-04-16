@@ -6,8 +6,12 @@ import os.path
 import re
 from pathlib import Path
 import markdown
+import requests
+import json
 from zipfile import ZipFile
 import transformnotion
+
+BUTTONDOWN_API_KEY = 'your_api_key_here'  # Replace with your actual Buttondown API key
 
 current_file_path = Path(__file__).resolve().parent
 
@@ -82,7 +86,30 @@ for the_file in inbox_path.glob("*.md"):
                 if the_line.startswith("##"):  # Skip everything until a headline 2
                     break
             the_output_file.write(the_line)
-            # the_output_file.write(the_input_file.read())
+            rendered_markdown = transformnotion.transform_markdown(the_input_file)
+            the_output_file.write(rendered_markdown)
+            create_buttondown_draft(subject, rendered_markdown)
+    print(f"Written: {fname}")
+
+def create_buttondown_draft(subject, body):
+    headers = {
+        "Authorization": f"Token {BUTTONDOWN_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "subject": subject,
+        "body": body,
+        "status": "draft",
+    }
+    response = requests.post(
+        "https://api.buttondown.email/v1/emails",
+        headers=headers,
+        data=json.dumps(data)
+    )
+    if response.status_code == 201:
+        print(f"Draft email created at Buttondown with subject: {subject}")
+    else:
+        print(f"Failed to create draft email at Buttondown: {response.content}")
             the_output_file.write(transformnotion.transform_markdown(the_input_file))
     print(f"Written: {fname}")
 
