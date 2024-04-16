@@ -25,7 +25,7 @@ def create_buttondown_draft(subject, body, metadata):
         emails = list_response.json().get('results', [])
         print(emails)
         print([email.get('metadata', {}) for email in emails])
-        existing_email = next((email for email in emails if email.get('metadata', {}).get('notion_id') == metadata['notion_id']), None)
+        existing_email = next((email for email in emails if metadata['notion_id'] in email.get('tags', [])), None)
     else:
         print(f"Failed to fetch emails from Buttondown: {list_response.content}")
         return
@@ -38,7 +38,7 @@ def create_buttondown_draft(subject, body, metadata):
             data=json.dumps({
                 "subject": subject,
                 "body": body,
-                "metadata": metadata
+                "tags": [metadata['notion_id']]
             })
         )
         if update_response.status_code == 200:
@@ -52,7 +52,7 @@ def create_buttondown_draft(subject, body, metadata):
         "subject": subject,
         "body": body,
         "status": "draft",
-        "metadata": metadata,
+        "tags": [metadata['notion_id']],
     }
     response = requests.post(
         "https://api.buttondown.email/v1/emails",
