@@ -12,6 +12,7 @@ from zipfile import ZipFile
 import transformnotion
 
 def create_buttondown_draft(subject, body):
+def create_buttondown_draft(subject, body, metadata):
     headers = {
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
         "Content-Type": "application/json"
@@ -20,6 +21,7 @@ def create_buttondown_draft(subject, body):
         "subject": subject,
         "body": body,
         "status": "draft",
+        "metadata": metadata,
     }
     response = requests.post(
         "https://api.buttondown.email/v1/emails",
@@ -110,7 +112,11 @@ for the_file in inbox_path.glob("*.md"):
             the_output_file.write(the_line)
             rendered_markdown = transformnotion.transform_markdown(the_input_file)
             the_output_file.write(rendered_markdown)
-            create_buttondown_draft(subject, the_line + rendered_markdown)
+            metadata = {
+                "notion_id": notion_id,
+                "last_modified": last_modified
+            }
+            create_buttondown_draft(subject, the_line + rendered_markdown, metadata)
     print(f"Written: {fname}")
 
 
