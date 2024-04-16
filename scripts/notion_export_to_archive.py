@@ -12,6 +12,10 @@ from zipfile import ZipFile
 import transformnotion
 
 def create_buttondown_draft(subject, body, metadata):
+    headers = {
+        "Authorization": f"Token {BUTTONDOWN_API_KEY}",
+        "Content-Type": "application/json"
+    }
     # Fetch the list of current emails from Buttondown
     list_response = requests.get(
         "https://api.buttondown.email/v1/emails",
@@ -19,6 +23,8 @@ def create_buttondown_draft(subject, body, metadata):
     )
     if list_response.status_code == 200:
         emails = list_response.json().get('results', [])
+        print(emails)
+        print([email.get('metadata', {}) for email in emails])
         existing_email = next((email for email in emails if email.get('metadata', {}).get('notion_id') == metadata['notion_id']), None)
     else:
         print(f"Failed to fetch emails from Buttondown: {list_response.content}")
@@ -42,10 +48,6 @@ def create_buttondown_draft(subject, body, metadata):
             print(f"Failed to update email at Buttondown: {update_response.content}")
             return
 
-    headers = {
-        "Authorization": f"Token {BUTTONDOWN_API_KEY}",
-        "Content-Type": "application/json"
-    }
     data = {
         "subject": subject,
         "body": body,
