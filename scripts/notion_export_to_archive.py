@@ -11,7 +11,6 @@ import json
 from zipfile import ZipFile
 import transformnotion
 
-def create_buttondown_draft(subject, body):
 def create_buttondown_draft(subject, body, metadata):
     headers = {
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
@@ -32,7 +31,6 @@ def create_buttondown_draft(subject, body, metadata):
         print(f"Draft email created at Buttondown with subject: {subject}")
     else:
         print(f"Failed to create draft email at Buttondown: {response.content}")
-    print(f"Written: {fname}")
 
 
 BUTTONDOWN_API_KEY = os.getenv('BUTTONDOWN_API_KEY')  # Get Buttondown API key from environment variable
