@@ -12,6 +12,36 @@ from zipfile import ZipFile
 import transformnotion
 
 def create_buttondown_draft(subject, body, metadata):
+    # Fetch the list of current emails from Buttondown
+    list_response = requests.get(
+        "https://api.buttondown.email/v1/emails",
+        headers=headers
+    )
+    if list_response.status_code == 200:
+        emails = list_response.json().get('results', [])
+        existing_email = next((email for email in emails if email.get('metadata', {}).get('notion_id') == metadata['notion_id']), None)
+    else:
+        print(f"Failed to fetch emails from Buttondown: {list_response.content}")
+        return
+
+    # If an email with the same notion-id exists, update it
+    if existing_email:
+        update_response = requests.put(
+            f"https://api.buttondown.email/v1/emails/{existing_email['id']}",
+            headers=headers,
+            data=json.dumps({
+                "subject": subject,
+                "body": body,
+                "metadata": metadata
+            })
+        )
+        if update_response.status_code == 200:
+            print(f"Updated existing email at Buttondown with subject: {subject}")
+            return
+        else:
+            print(f"Failed to update email at Buttondown: {update_response.content}")
+            return
+
     headers = {
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
         "Content-Type": "application/json"
