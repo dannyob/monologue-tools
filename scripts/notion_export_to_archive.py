@@ -11,6 +11,28 @@ import json
 from zipfile import ZipFile
 import transformnotion
 
+def create_buttondown_draft(subject, body):
+    headers = {
+        "Authorization": f"Token {BUTTONDOWN_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "subject": subject,
+        "body": body,
+        "status": "draft",
+    }
+    response = requests.post(
+        "https://api.buttondown.email/v1/emails",
+        headers=headers,
+        data=json.dumps(data)
+    )
+    if response.status_code == 201:
+        print(f"Draft email created at Buttondown with subject: {subject}")
+    else:
+        print(f"Failed to create draft email at Buttondown: {response.content}")
+    print(f"Written: {fname}")
+
+
 BUTTONDOWN_API_KEY = os.getenv('BUTTONDOWN_API_KEY')  # Get Buttondown API key from environment variable
 
 current_file_path = Path(__file__).resolve().parent
@@ -88,29 +110,7 @@ for the_file in inbox_path.glob("*.md"):
             the_output_file.write(the_line)
             rendered_markdown = transformnotion.transform_markdown(the_input_file)
             the_output_file.write(rendered_markdown)
-            create_buttondown_draft(subject, rendered_markdown)
-    print(f"Written: {fname}")
-
-def create_buttondown_draft(subject, body):
-    headers = {
-        "Authorization": f"Token {BUTTONDOWN_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "subject": subject,
-        "body": body,
-        "status": "draft",
-    }
-    response = requests.post(
-        "https://api.buttondown.email/v1/emails",
-        headers=headers,
-        data=json.dumps(data)
-    )
-    if response.status_code == 201:
-        print(f"Draft email created at Buttondown with subject: {subject}")
-    else:
-        print(f"Failed to create draft email at Buttondown: {response.content}")
-            the_output_file.write(transformnotion.transform_markdown(the_input_file))
+            create_buttondown_draft(subject, the_line + rendered_markdown)
     print(f"Written: {fname}")
 
 
