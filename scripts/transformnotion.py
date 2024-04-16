@@ -47,6 +47,8 @@ class URLRewritingMarkdownRenderer(MarkdownRenderer):
             return f"[{link_text}]({element.dest}{title})"
         link_dest = get_redirected_url(element.dest)
         if link_dest == element.dest:
+            print(f"Warning: No redirection found for {element.dest}")
+        if link_dest == element.dest:
             return f"[{link_text}]({element.dest}{title})"
         return f"[{link_text}]({link_dest}{title})[🄽]({element.dest})"
 
