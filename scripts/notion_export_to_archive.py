@@ -5,7 +5,7 @@ import os
 import os.path
 import re
 from pathlib import Path
-import markdown
+from markdown import Markdown
 import requests
 import json
 from zipfile import ZipFile
@@ -28,11 +28,15 @@ def create_buttondown_draft(subject, body, metadata):
     )
     if response.status_code == 201:
         print(f"Draft email created at Buttondown with subject: {subject}")
+    elif response.headers.get('Content-Type', '').startswith('text/'):
+        print(f"Failed to create draft email at Buttondown: {response.text}")
     else:
-        print(f"Failed to create draft email at Buttondown: {response.content}")
+        print(f"Failed to create draft email at Buttondown: {response.status_code}")
 
 
-BUTTONDOWN_API_KEY = os.getenv('BUTTONDOWN_API_KEY')  # Get Buttondown API key from environment variable
+BUTTONDOWN_API_KEY = os.getenv('BUTTONDOWN_API_KEY', '')  # Get Buttondown API key from environment variable or default to empty string
+if not BUTTONDOWN_API_KEY:
+    raise EnvironmentError("BUTTONDOWN_API_KEY environment variable not set.")
 
 current_file_path = Path(__file__).resolve().parent
 
@@ -46,14 +50,15 @@ if not archive_path.exists():
 if not inbox_path.exists():
     raise FileNotFoundError(f"Could not find the specified file: {inbox_path}")
 
-md = markdown.Markdown(extensions=["meta"])
+md = Markdown(extensions=["meta"])
 
 required_metadata = ["notion-id", "last-modified", "subject"]
 
 archive_files_by_notion_id = {}
 
 for the_file in archive_path.glob("*.md"):
-    markdown = md.convert(open(the_file).read())
+    with open(the_file, 'r') as file:
+        markdown_content = md.convert(file.read())
     metadata = md.Meta
     if not all(elem in metadata.keys() for elem in required_metadata):
         raise Exception(f"{the_file} does not have all the metadata")
@@ -72,7 +77,7 @@ def find_first_line_with_hash(file_path):
     with open(file_path, "r") as file:
         for line in file:
             if line.startswith("#"):
-                return line.strip()[1:]  # Remove leading/trailing whitespace
+                return line.strip()  # Remove leading/trailing whitespace only
     return ""
 
 
