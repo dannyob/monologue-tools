@@ -16,43 +16,10 @@ def create_buttondown_draft(subject, body, metadata):
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
         "Content-Type": "application/json"
     }
-    # Fetch the list of current emails from Buttondown
-    list_response = requests.get(
-        "https://api.buttondown.email/v1/emails",
-        headers=headers
-    )
-    if list_response.status_code == 200:
-        emails = list_response.json().get('results', [])
-        print(emails)
-        print([email.get('metadata', {}) for email in emails])
-        existing_email = next((email for email in emails if metadata['notion_id'] in email.get('tags', [])), None)
-    else:
-        print(f"Failed to fetch emails from Buttondown: {list_response.content}")
-        return
-
-    # If an email with the same notion-id exists, update it
-    if existing_email:
-        update_response = requests.put(
-            f"https://api.buttondown.email/v1/emails/{existing_email['id']}",
-            headers=headers,
-            data=json.dumps({
-                "subject": subject,
-                "body": body,
-                "tags": [metadata['notion_id']]
-            })
-        )
-        if update_response.status_code == 200:
-            print(f"Updated existing email at Buttondown with subject: {subject}")
-            return
-        else:
-            print(f"Failed to update email at Buttondown: {update_response.content}")
-            return
-
     data = {
         "subject": subject,
         "body": body,
         "status": "draft",
-        "tags": [metadata['notion_id']],
     }
     response = requests.post(
         "https://api.buttondown.email/v1/emails",
