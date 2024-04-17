@@ -11,10 +11,11 @@ import json
 from zipfile import ZipFile
 import transformnotion
 
+
 def create_buttondown_draft(subject, body, metadata):
     headers = {
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
     data = {
         "subject": subject,
@@ -22,19 +23,19 @@ def create_buttondown_draft(subject, body, metadata):
         "status": "draft",
     }
     response = requests.post(
-        "https://api.buttondown.email/v1/emails",
-        headers=headers,
-        data=json.dumps(data)
+        "https://api.buttondown.email/v1/emails", headers=headers, data=json.dumps(data)
     )
     if response.status_code == 201:
         print(f"Draft email created at Buttondown with subject: {subject}")
-    elif response.headers.get('Content-Type', '').startswith('text/'):
+    elif response.headers.get("Content-Type", "").startswith("text/"):
         print(f"Failed to create draft email at Buttondown: {response.text}")
     else:
         print(f"Failed to create draft email at Buttondown: {response.status_code}")
 
 
-BUTTONDOWN_API_KEY = os.getenv('BUTTONDOWN_API_KEY', '')  # Get Buttondown API key from environment variable or default to empty string
+BUTTONDOWN_API_KEY = os.getenv(
+    "BUTTONDOWN_API_KEY", ""
+)  # Get Buttondown API key from environment variable or default to empty string
 if not BUTTONDOWN_API_KEY:
     raise EnvironmentError("BUTTONDOWN_API_KEY environment variable not set.")
 
@@ -57,7 +58,7 @@ required_metadata = ["notion-id", "last-modified", "subject"]
 archive_files_by_notion_id = {}
 
 for the_file in archive_path.glob("*.md"):
-    with open(the_file, 'r') as file:
+    with open(the_file, "r") as file:
         markdown_content = md.convert(file.read())
     metadata = md.Meta
     if not all(elem in metadata.keys() for elem in required_metadata):
@@ -114,10 +115,7 @@ for the_file in inbox_path.glob("*.md"):
             the_output_file.write(the_line)
             rendered_markdown = transformnotion.transform_markdown(the_input_file)
             the_output_file.write(rendered_markdown)
-            metadata = {
-                "notion_id": notion_id,
-                "last_modified": last_modified
-            }
+            metadata = {"notion_id": notion_id, "last_modified": last_modified}
             create_buttondown_draft(subject, the_line + rendered_markdown, metadata)
     print(f"Written: {fname}")
 

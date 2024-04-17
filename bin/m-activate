@@ -1,0 +1,42 @@
+#!/bin/echo "source me, don't run me"
+###
+# activate-all - extended shell environment for venv
+###
+# Note, you should source these, not execute this script
+# This stuff has been tried on zsh, but should work on bash.
+# There are other commands that use zsh, though, so you should
+# probably install it.
+###
+
+if [ -n "$BASH_VERSION" ]; then
+    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+elif [ -n "$ZSH_VERSION" ]; then
+    script_dir=$(cd "$(dirname "$0")" && pwd)
+else
+    echo "Unsupported shell."
+    exit 1
+fi
+
+declare -x MONOLOGUE_ROOT=$(dirname $script_dir)
+
+# Check for the existence of the venv directory
+if [ ! -d "$MONOLOGUE_ROOT/.venv" ]; then
+    echo "The virtual environment directory does not exist. Please run:"
+    echo "python -m venv $MONOLOGUE_ROOT/.venv --prompt mono"
+    return 1 2>/dev/null || exit 1
+fi
+
+. $MONOLOGUE_ROOT/.venv/bin/activate
+PATH=$MONOLOGUE_ROOT/bin:$PATH
+
+# Default to going to the root of project
+cd() {
+    if [[ $# -eq 0 ]]; then
+        builtin cd $MONOLOGUE_ROOT || builtin cd
+    else
+        builtin cd "$@"
+    fi
+}
+
+# Project utilities
+
