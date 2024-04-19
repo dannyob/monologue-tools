@@ -4,6 +4,7 @@ import datetime
 import os
 import os.path
 import re
+import shutil
 from pathlib import Path
 from markdown import Markdown
 import requests
