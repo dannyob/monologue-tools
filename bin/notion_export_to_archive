@@ -97,7 +97,11 @@ def find_first_line_with_hash(file_path):
     with open(file_path, "r") as file:
         for line in file:
             if line.startswith("#"):
-                return line.strip()  # Remove leading/trailing whitespace only
+                date_match = re.search(r'\d{4}-\d{2}-\d{2}', line)
+                if date_match:
+                    return line[date_match.start():].strip()  # Strip everything before the date
+                else:
+                    raise ValueError(f"Subject line does not contain a valid date: {line}")
     return ""
 
 
