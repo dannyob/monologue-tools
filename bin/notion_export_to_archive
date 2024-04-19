@@ -121,7 +121,13 @@ for the_file in inbox_path.glob("*.md"):
             print(f"Newer archived {notion_id} found, skipping.")
             continue
         os.remove(archive_files_by_notion_id[notion_id]["filename"])
-    fname = subject[1:11] + ".md"
+    # Extract the date from the subject and format it correctly
+    date_match = re.search(r'\d{4}-\d{2}-\d{2}', subject)
+    if date_match:
+        formatted_date = date_match.group(0)
+    else:
+        raise ValueError(f"Subject line does not contain a valid date: {subject}")
+    fname = formatted_date + ".md"
     with open(archive_path / fname, "w") as the_output_file:
         the_output_file.write(f"Notion-Id: {notion_id}\n")
         the_output_file.write(f"Last-Modified: {last_modified}\n")
