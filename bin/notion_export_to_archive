@@ -52,6 +52,15 @@ def copy_latest_export_to_inbox(tmp_dir, inbox_dir):
 BUTTONDOWN_API_KEY = os.getenv(
     "BUTTONDOWN_API_KEY", ""
 )  # Get Buttondown API key from environment variable or default to empty string
+def export_notion_to_markdown(notion_url, inbox_path):
+    notion_id = notion_url.rsplit('/', 1)[-1]
+    output_filename = inbox_path / f"{notion_id}.md"
+    with open(output_filename, "w") as output_file:
+        process = subprocess.run(["notion-exporter", notion_url], stdout=output_file)
+    if process.returncode != 0:
+        raise Exception("Failed to export Notion page to markdown.")
+    return output_filename
+
 if not BUTTONDOWN_API_KEY:
     raise EnvironmentError("BUTTONDOWN_API_KEY environment variable not set.")
 
@@ -63,6 +72,14 @@ archive_path = ROOT_DIR / "daily/archive"
 inbox_path = ROOT_DIR / "daily/inbox"
 
 copy_latest_export_to_inbox(tmp_dir, inbox_path)
+
+if len(sys.argv) > 1:
+    notion_url = sys.argv[1]
+    if notion_url.startswith("https://www.notion.so/filecoin/"):
+        print(f"Exporting Notion page: {notion_url}")
+        exported_file = export_notion_to_markdown(notion_url, inbox_path)
+        print(f"Exported to {exported_file}")
+        sys.exit(0)
 
 if not archive_path.exists():
     raise FileNotFoundError(f"Could not find the specified file: {archive_path}")
@@ -91,6 +108,10 @@ for the_file in inbox_path.glob("*.zip"):
     with ZipFile(the_file, "r") as zip_file:
         zip_file.extractall(inbox_path)
     os.remove(the_file)
+
+    # Skip the rest of the processing if a Notion URL was provided
+    if len(sys.argv) > 1 and sys.argv[1].startswith("https://www.notion.so/filecoin/"):
+        continue
 
 
 def find_first_line_with_hash(file_path):
