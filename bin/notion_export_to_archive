@@ -38,11 +38,12 @@ def create_buttondown_draft(subject, body, metadata):
 
 
 def move_latest_export_to_inbox(tmp_dir, inbox_dir):
-    zip_files = [f for f in tmp_dir.glob("*_Export*.zip")]
-    if zip_files:
-        latest_zip_file = max(zip_files, key=os.path.getmtime)
-        shutil.move(str(latest_zip_file), inbox_dir)
-        print(f"Moved {latest_zip_file} to {inbox_dir}")
+    all_files = list(tmp_dir.iterdir())
+    if all_files:
+        latest_file = max(all_files, key=os.path.getmtime)
+        if latest_file.suffix == '.zip':
+            shutil.move(str(latest_file), inbox_dir)
+            print(f"Moved {latest_file} to {inbox_dir}")
 
 
 BUTTONDOWN_API_KEY = os.getenv(
