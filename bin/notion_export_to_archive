@@ -33,6 +33,21 @@ def create_buttondown_draft(subject, body, metadata):
         print(f"Failed to create draft email at Buttondown: {response.status_code}")
 
 
+def copy_latest_export_to_inbox(tmp_dir, inbox_dir):
+    latest_zip_file = None
+    latest_mod_time = 0
+    for item in os.listdir(tmp_dir):
+        if "_Export" in item and item.endswith(".zip"):
+            item_path = os.path.join(tmp_dir, item)
+            mod_time = os.path.getmtime(item_path)
+            if mod_time > latest_mod_time:
+                latest_mod_time = mod_time
+                latest_zip_file = item_path
+    if latest_zip_file:
+        shutil.copy(latest_zip_file, inbox_dir)
+        print(f"Copied {latest_zip_file} to {inbox_dir}")
+
+
 BUTTONDOWN_API_KEY = os.getenv(
     "BUTTONDOWN_API_KEY", ""
 )  # Get Buttondown API key from environment variable or default to empty string
@@ -41,9 +56,12 @@ if not BUTTONDOWN_API_KEY:
 
 current_file_path = Path(__file__).resolve().parent
 
+tmp_dir = Path.home() / "tmp"
 ROOT_DIR = current_file_path / ".."
 archive_path = ROOT_DIR / "daily/archive"
 inbox_path = ROOT_DIR / "daily/inbox"
+
+copy_latest_export_to_inbox(tmp_dir, inbox_path)
 
 if not archive_path.exists():
     raise FileNotFoundError(f"Could not find the specified file: {archive_path}")
