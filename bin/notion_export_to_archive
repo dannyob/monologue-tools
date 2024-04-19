@@ -7,7 +7,6 @@ import datetime
 import os
 import os.path
 import re
-import shutil
 from pathlib import Path
 from markdown import Markdown
 import requests
@@ -37,26 +36,20 @@ def create_buttondown_draft(subject, body, metadata):
         print(f"Failed to create draft email at Buttondown: {response.status_code}")
 
 
-def move_latest_export_to_inbox(tmp_dir, inbox_dir):
-    all_files = list(tmp_dir.iterdir())
-    if all_files:
-        latest_file = max(all_files, key=os.path.getmtime)
-        if latest_file.suffix == '.zip':
-            shutil.move(str(latest_file), inbox_dir)
-            print(f"Moved {latest_file} to {inbox_dir}")
-
-
 BUTTONDOWN_API_KEY = os.getenv(
     "BUTTONDOWN_API_KEY", ""
 )  # Get Buttondown API key from environment variable or default to empty string
+
+
 def export_notion_to_markdown(notion_url, inbox_path):
-    notion_id = notion_url.rsplit('/', 1)[-1]
+    notion_id = notion_url.rsplit("/", 1)[-1]
     output_filename = inbox_path / f"{notion_id}.md"
     with open(output_filename, "w") as output_file:
         process = subprocess.run(["notion-exporter", notion_url], stdout=output_file)
     if process.returncode != 0:
         raise Exception("Failed to export Notion page to markdown.")
     return output_filename
+
 
 if not BUTTONDOWN_API_KEY:
     raise EnvironmentError("BUTTONDOWN_API_KEY environment variable not set.")
@@ -67,8 +60,6 @@ tmp_dir = Path.home() / "tmp"
 ROOT_DIR = current_file_path / ".."
 archive_path = ROOT_DIR / "daily/archive"
 inbox_path = ROOT_DIR / "daily/inbox"
-
-move_latest_export_to_inbox(tmp_dir, inbox_path)
 
 if len(sys.argv) > 1:
     notion_url = sys.argv[1]
@@ -115,11 +106,15 @@ def find_first_line_with_hash(file_path):
     with open(file_path, "r") as file:
         for line in file:
             if line.startswith("#"):
-                date_match = re.search(r'\d{4}-\d{2}-\d{2}', line)
+                date_match = re.search(r"\d{4}-\d{2}-\d{2}", line)
                 if date_match:
-                    return line[date_match.start():].strip()  # Strip everything before the date
+                    return line[
+                        date_match.start() :
+                    ].strip()  # Strip everything before the date
                 else:
-                    raise ValueError(f"Subject line does not contain a valid date: {line}")
+                    raise ValueError(
+                        f"Subject line does not contain a valid date: {line}"
+                    )
     return ""
 
 
@@ -144,7 +139,7 @@ for the_file in inbox_path.glob("*.md"):
             continue
         os.remove(archive_files_by_notion_id[notion_id]["filename"])
     # Extract the date from the subject and format it correctly
-    date_match = re.search(r'\d{4}-\d{2}-\d{2}', subject)
+    date_match = re.search(r"\d{4}-\d{2}-\d{2}", subject)
     if date_match:
         formatted_date = date_match.group(0)
     else:
