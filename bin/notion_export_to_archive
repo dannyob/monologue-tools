@@ -48,7 +48,7 @@ def copy_latest_export_to_inbox(tmp_dir, inbox_dir):
                 latest_mod_time = mod_time
                 latest_zip_file = item_path
     if latest_zip_file:
-        shutil.copy(latest_zip_file, inbox_dir)
+        shutil.move(latest_zip_file, inbox_dir)
         print(f"Copied {latest_zip_file} to {inbox_dir}")
 
 
