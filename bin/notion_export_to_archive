@@ -118,24 +118,3 @@ for the_file in inbox_path.glob("*.md"):
             metadata = {"notion_id": notion_id, "last_modified": last_modified}
             create_buttondown_draft(subject, the_line + rendered_markdown, metadata)
     print(f"Written: {fname}")
-
-
-#
-# for each zipfile in the inbox
-# collect their contents and last modified
-# replace any in our list and just keep the most recent
-# deduce the original notion name
-# is there already a mapping
-#       say whether it is older or newer than the current file
-#  do we have a -f flag?
-#   no?
-#     tell 'em to come back with an -f flag;
-#     exit
-#   yes?
-#      say omg we're going to overwrite
-#
-# run the markdown through our list of filters, which should include
-#  adding the metadata to the top
-#  putting any images or external stuff onto filecoin/ipfs and changing the
-#  href to point to this munging our Notion links so that they are marked with
-#  a little unicode N copy it over to the archive
