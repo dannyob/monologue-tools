@@ -38,17 +38,10 @@ def create_buttondown_draft(subject, body, metadata):
 
 
 def move_latest_export_to_inbox(tmp_dir, inbox_dir):
-    latest_zip_file = None
-    latest_mod_time = 0
-    for item in os.listdir(tmp_dir):
-        if "_Export" in item and item.endswith(".zip"):
-            item_path = os.path.join(tmp_dir, item)
-            mod_time = os.path.getmtime(item_path)
-            if mod_time > latest_mod_time:
-                latest_mod_time = mod_time
-                latest_zip_file = item_path
-    if latest_zip_file:
-        shutil.move(latest_zip_file, inbox_dir)
+    zip_files = [f for f in tmp_dir.glob("*_Export*.zip")]
+    if zip_files:
+        latest_zip_file = max(zip_files, key=os.path.getmtime)
+        shutil.move(str(latest_zip_file), inbox_dir)
         print(f"Moved {latest_zip_file} to {inbox_dir}")
 
 
