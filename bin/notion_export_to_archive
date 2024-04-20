@@ -15,7 +15,7 @@ from zipfile import ZipFile
 import transformnotion
 
 
-def create_buttondown_draft(subject, body, metadata):
+def create_buttondown_draft(subject, body):
     headers = {
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
         "Content-Type": "application/json",
@@ -135,7 +135,6 @@ for the_file in inbox_path.glob("*.md"):
     subject = find_first_line_with_hash(the_file)
     if notion_id in archive_files_by_notion_id:
         if last_modified <= archive_files_by_notion_id[notion_id]["last-modified"][0]:
-            print(f"Newer archived {notion_id} found, skipping.")
             continue
         os.remove(archive_files_by_notion_id[notion_id]["filename"])
     # Extract the date from the subject and format it correctly
@@ -157,6 +156,5 @@ for the_file in inbox_path.glob("*.md"):
             the_output_file.write(the_line)
             rendered_markdown = transformnotion.transform_markdown(the_input_file)
             the_output_file.write(rendered_markdown)
-            metadata = {"notion_id": notion_id, "last_modified": last_modified}
-            create_buttondown_draft(subject, the_line + rendered_markdown, metadata)
+            create_buttondown_draft(subject, the_line + rendered_markdown)
     print(f"Written: {fname}")
