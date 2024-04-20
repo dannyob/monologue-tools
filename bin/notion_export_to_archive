@@ -15,6 +15,21 @@ from zipfile import ZipFile
 import transformnotion
 
 
+def find_buttondown_email(subject_start):
+    headers = {
+        "Authorization": f"Token {BUTTONDOWN_API_KEY}",
+    }
+    response = requests.get("https://api.buttondown.email/v1/emails", headers=headers)
+    if response.status_code != 200:
+        raise Exception(f"Failed to fetch emails: {response.status_code}")
+
+    emails = response.json()
+    matching_emails = [
+        email for email in emails if email["subject"].startswith(subject_start)
+    ]
+    return matching_emails
+
+
 def create_buttondown_draft(subject, body):
     headers = {
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
