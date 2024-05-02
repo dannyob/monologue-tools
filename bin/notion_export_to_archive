@@ -82,7 +82,9 @@ if len(sys.argv) > 1:
         print(f"Exporting Notion page: {notion_url}")
         exported_file = export_notion_to_markdown(notion_url, inbox_path)
         print(f"Exported to {exported_file}")
-        sys.exit(0)
+    else:
+        print("I only know how to export notion pages")
+        sys.exit(1)
 
 if not archive_path.exists():
     raise FileNotFoundError(f"Could not find the specified file: {archive_path}")
