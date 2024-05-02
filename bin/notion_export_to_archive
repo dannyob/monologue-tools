@@ -14,23 +14,33 @@ import json
 from zipfile import ZipFile
 import transformnotion
 
+BUTTONDOWN_API_KEY = os.getenv(
+    "BUTTONDOWN_API_KEY", ""
+)  # Get Buttondown API key from environment variable or default to empty string
 
-def find_buttondown_email(subject_start):
+
+def get_draft_emails_info():
     headers = {
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
     }
-    response = requests.get("https://api.buttondown.email/v1/emails", headers=headers)
+    response = requests.get("https://api.buttondown.email/v1/emails?status=draft", headers=headers)
     if response.status_code != 200:
         raise Exception(f"Failed to fetch emails: {response.status_code}")
 
-    emails = response.json()
-    matching_emails = [
-        email for email in emails if email["subject"].startswith(subject_start)
-    ]
-    return matching_emails
+    emails = response.json()['results']
+    draft_emails_info = {}
+    for email in emails:
+        print(email["status"])
+        if email["status"] == "draft":
+            subject = email["subject"]
+            date_match = re.search(r"\d{4}-\d{2}-\d{2}", subject)
+            if date_match:
+                iso_date = date_match.group(0)
+                draft_emails_info[iso_date] = email
+    return draft_emails_info
 
 
-def create_buttondown_draft(subject, body):
+def create_buttondown_draft(subject, body, mail_id = None):
     headers = {
         "Authorization": f"Token {BUTTONDOWN_API_KEY}",
         "Content-Type": "application/json",
@@ -40,20 +50,23 @@ def create_buttondown_draft(subject, body):
         "body": body,
         "status": "draft",
     }
-    response = requests.post(
-        "https://api.buttondown.email/v1/emails", headers=headers, data=json.dumps(data)
-    )
+    if mail_id:
+        response = requests.patch(
+                f"https://api.buttondown.email/v1/emails/{mail_id}", headers=headers, data=json.dumps(data)
+                )
+    else:
+        response = requests.post(
+                "https://api.buttondown.email/v1/emails", headers=headers, data=json.dumps(data)
+                )
     if response.status_code == 201:
         print(f"Draft email created at Buttondown with subject: {subject}")
+    elif response.status_code == 200:
+        print(f"Draft email updated at Buttondown with subject: {subject}")
     elif response.headers.get("Content-Type", "").startswith("text/"):
         print(f"Failed to create draft email at Buttondown: {response.text}")
     else:
         print(f"Failed to create draft email at Buttondown: {response.status_code}")
 
-
-BUTTONDOWN_API_KEY = os.getenv(
-    "BUTTONDOWN_API_KEY", ""
-)  # Get Buttondown API key from environment variable or default to empty string
 
 
 def export_notion_to_markdown(notion_url, inbox_path):
@@ -173,5 +186,10 @@ for the_file in inbox_path.glob("*.md"):
             the_output_file.write(the_line)
             rendered_markdown = transformnotion.transform_markdown(the_input_file)
             the_output_file.write(rendered_markdown)
-            create_buttondown_draft(subject, the_line + rendered_markdown)
+            m= get_draft_emails_info()
+            if formatted_date in m:
+                draft_id = m[formatted_date]["id"]
+                create_buttondown_draft(subject, the_line + rendered_markdown, draft_id)
+            else:
+                create_buttondown_draft(subject, the_line + rendered_markdown)
     print(f"Written: {fname}")
