@@ -29,6 +29,8 @@ fi
 . $MONOLOGUE_ROOT/.venv/bin/activate
 PATH=$MONOLOGUE_ROOT/bin:$PATH
 
+. <(gpg --decrypt < ~/Private/secrets/monologue/env.gpg)
+
 # Default to going to the root of project
 cd() {
     if [[ $# -eq 0 ]]; then
