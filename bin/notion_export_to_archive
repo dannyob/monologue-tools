@@ -192,4 +192,4 @@ for the_file in inbox_path.glob("*.md"):
                 create_buttondown_draft(subject, the_line + rendered_markdown, draft_id)
             else:
                 create_buttondown_draft(subject, the_line + rendered_markdown)
-    print(f"Written: {fname}")
+    print(f"Written: {archive_path}/{fname}")
