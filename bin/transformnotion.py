@@ -50,7 +50,7 @@ class URLRewritingMarkdownRenderer(MarkdownRenderer):
             print(f"Warning: No redirection found for {element.dest}")
         if link_dest == element.dest:
             return f"[{link_text}]({element.dest}{title})"
-        return f"[{link_text}]({link_dest}{title})[🄽]({element.dest})"
+        return f"[{link_text}]({link_dest}{title}) [🄽]({element.dest})"
 
 
 def transform_markdown(file):
