@@ -58,6 +58,7 @@ def create_buttondown_draft(subject, body, mail_id = None):
         response = requests.post(
                 "https://api.buttondown.email/v1/emails", headers=headers, data=json.dumps(data)
                 )
+    print("Buttondown: https://buttondown.email/emails")
     if response.status_code == 201:
         print(f"Draft email created at Buttondown with subject: {subject}")
     elif response.status_code == 200:
