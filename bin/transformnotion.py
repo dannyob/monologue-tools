@@ -10,6 +10,33 @@ if "NOTION_TOKEN" not in os.environ:
 client = NotionClient(token_v2=os.environ["NOTION_TOKEN"])
 
 
+def find_url_property_key(page):
+    """Find the property key that contains a URL value."""
+    raw_data = page.get()
+    
+    if "properties" not in raw_data:
+        return None
+    
+    properties = raw_data["properties"]
+    
+    # Look through all properties for URL values
+    for key, value in properties.items():
+        try:
+            # Skip the title property
+            if key == "title":
+                continue
+            # Check if this property contains a URL
+            if isinstance(value, list) and len(value) > 0:
+                if isinstance(value[0], list) and len(value[0]) > 0:
+                    first_val = value[0][0]
+                    if isinstance(first_val, str) and first_val.startswith('http'):
+                        return key
+        except:
+            pass
+    
+    return None
+
+
 def get_redirected_url_and_content(notion_url):
     """Get redirect URL and page content for context."""
     page = client.get_block(notion_url)
@@ -18,9 +45,18 @@ def get_redirected_url_and_content(notion_url):
     page_content = ""
     
     try:
-        # magic notion goo - check for redirect URL
+        # Try the known magic key first
         alternative_url = page.get()["properties"]["n\\G@"][0][0]
     except (KeyError, IndexError):
+        # Magic key didn't work, try dynamic discovery
+        try:
+            url_property_key = find_url_property_key(page)
+            if url_property_key:
+                alternative_url = page.get()["properties"][url_property_key][0][0]
+        except (KeyError, IndexError):
+            pass
+    
+    if not alternative_url:
         # No redirect found - get page content for context
         try:
             # Get page title
@@ -156,3 +192,14 @@ def transform_markdown(file):
         processed_missing_links.append((link_text, notion_url, context, page_title, page_content))
     
     return rendered_content, processed_missing_links
+
+
+if __name__ == "__main__":
+    import sys
+    content, missing_links = transform_markdown(sys.stdin)
+    print(content, end='')
+    
+    # Report missing links to stderr
+    if missing_links:
+        for link_text, notion_url, context, page_title, page_content in missing_links:
+            sys.stderr.write(f"Missing redirect for: {link_text} ({notion_url})\n")
