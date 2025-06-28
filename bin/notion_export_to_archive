@@ -257,6 +257,27 @@ for the_file in inbox_path.glob("*.md"):
                     except Exception as e:
                         print_error(f"Error getting URL suggestion: {e}")
                     print()  # Add spacing between suggestions
+            else:
+                # No missing links, run grammar check
+                print_success("No missing Notion links found. Running grammar check...")
+                archive_file = archive_path / fname
+                try:
+                    grammar_command = [
+                        "llm",
+                        "give me any typo or grammar fixes for this -- preferably as human readable diffs. "
+                        "Highlight words to change, rather than whole chunks. Use markdown to express the changes"
+                    ]
+                    with open(archive_file, 'r') as f:
+                        result = subprocess.run(grammar_command, input=f.read(), capture_output=True, text=True, timeout=60)
+                    if result.returncode == 0:
+                        print_info("Grammar check results:")
+                        print(result.stdout)
+                    else:
+                        print_error(f"Grammar check failed: {result.stderr}")
+                except subprocess.TimeoutExpired:
+                    print_error("Grammar check timed out")
+                except Exception as e:
+                    print_error(f"Error running grammar check: {e}")
             
             m= get_draft_emails_info()
             if formatted_date in m:
