@@ -16,3 +16,12 @@ repos:
       args: [ --fix ]
     # Run the formatter.
     - id: ruff-format
+- repo: local
+  hooks:
+    - id: check-notion-urls
+      name: Check for internal Notion URLs
+      entry: bin/prevent_internal_notion_urls.py
+      language: script
+      pass_filenames: true
+      # Check all text files
+      types: [text]
