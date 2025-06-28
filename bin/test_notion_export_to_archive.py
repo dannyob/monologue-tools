@@ -1,5 +1,17 @@
 import unittest
-from notion_export_to_archive import filename_to_notion_id
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Import the script without .py extension
+import importlib.util
+
+spec = importlib.util.spec_from_file_location(
+    "notion_export_to_archive", "notion_export_to_archive"
+)
+notion_export_to_archive = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(notion_export_to_archive)
+filename_to_notion_id = notion_export_to_archive.filename_to_notion_id
 
 
 class TestNotionExportToArchive(unittest.TestCase):

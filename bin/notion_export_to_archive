@@ -246,10 +246,6 @@ for the_file in inbox_path.glob("*.md"):
                         
                         # Add linked page context if available
                         if page_title or page_content:
-                            print(f"{Colors.DIM}DEBUG: Using linked page context:{Colors.RESET}")
-                            print(f"{Colors.DIM}  Title: '{page_title}'{Colors.RESET}")
-                            print(f"{Colors.DIM}  Content: '{page_content[:100]}{'...' if len(page_content) > 100 else ''}'{Colors.RESET}")
-                            
                             prompt_parts.append(f"The Notion page linked with '{link_text}' contains:")
                             if page_title:
                                 prompt_parts.append(f"- Title: {page_title}")
@@ -278,9 +274,6 @@ for the_file in inbox_path.glob("*.md"):
                         prompt += f"Look for any URLs mentioned that relate to {link_text}. "
                         prompt += f"If an exact URL is mentioned, return that. Otherwise, return the most likely canonical URL. "
                         prompt += f"Output only the URL in markdown code blocks."
-                        
-                        print(f"\n{Colors.DIM}DEBUG: Full prompt being sent to Perplexity:{Colors.RESET}")
-                        print(f"{Colors.DIM}{prompt}{Colors.RESET}\n")
                         
                         # Call llm -m sonar to get URL suggestion
                         llm_command = ["llm", "-m", "sonar", "-x", prompt]

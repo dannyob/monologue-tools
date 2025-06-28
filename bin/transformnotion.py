@@ -25,8 +25,6 @@ def get_redirected_url_and_content(notion_url):
         try:
             # Get page title
             page_title = getattr(page, 'title', '')
-            print(f"    \033[2mDEBUG: Fetching content from linked page\033[0m")
-            print(f"    \033[2mDEBUG: Page title: '{page_title}'\033[0m")
             
             # Extract first few paragraphs of content
             content_parts = []
@@ -47,10 +45,8 @@ def get_redirected_url_and_content(notion_url):
                     if text:
                         content_parts.append(text)
                         child_count += 1
-                        print(f"    \033[2mDEBUG: Block {child_count}: {text[:80]}{'...' if len(text) > 80 else ''}\033[0m")
             
             page_content = ' '.join(content_parts[:3])  # Use first 3 paragraphs
-            print(f"    \033[2mDEBUG: Combined content ({len(page_content)} chars): {page_content[:150]}{'...' if len(page_content) > 150 else ''}\033[0m")
             
         except Exception as e:
             print(f"    Could not fetch page content: {e}")
