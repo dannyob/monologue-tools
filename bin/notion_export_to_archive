@@ -232,6 +232,32 @@ for the_file in inbox_path.glob("*.md"):
             the_output_file.write(the_line)
             rendered_markdown, missing_links = transformnotion.transform_markdown(the_input_file)
             the_output_file.write(rendered_markdown)
+            
+            # Handle missing links
+            if missing_links:
+                print_warning(f"Found {len(missing_links)} missing Notion links. Suggesting URLs...")
+                for link_text, notion_url in missing_links:
+                    print_info(f"Looking up URL for: {Colors.BOLD}{link_text}{Colors.RESET}")
+                    try:
+                        # Call llm -m sonar to get URL suggestion
+                        llm_command = [
+                            "llm", "-m", "sonar",
+                            f"give me the canonical link to the subject matter of \"{link_text}\". "
+                            f"The context is a daily diary entry with Notion links. "
+                            f"Encode it in markdown ``` marks"
+                        ]
+                        result = subprocess.run(llm_command, capture_output=True, text=True, timeout=30)
+                        if result.returncode == 0:
+                            print_info(f"Suggested URL: {result.stdout.strip()}")
+                            print_info(f"Original Notion URL: {hyperlink(notion_url)}")
+                        else:
+                            print_error(f"Failed to get URL suggestion: {result.stderr}")
+                    except subprocess.TimeoutExpired:
+                        print_error(f"Timeout getting URL suggestion for: {link_text}")
+                    except Exception as e:
+                        print_error(f"Error getting URL suggestion: {e}")
+                    print()  # Add spacing between suggestions
+            
             m= get_draft_emails_info()
             if formatted_date in m:
                 draft_id = m[formatted_date]["id"]
