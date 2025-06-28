@@ -243,7 +243,7 @@ for the_file in inbox_path.glob("*.md"):
                     try:
                         # Call llm -m sonar to get URL suggestion
                         llm_command = [
-                            "llm", "-m", "sonar",
+                            "llm", "-m", "sonar", "-x",
                             f"give me the canonical link to the subject matter of \"{link_text}\". "
                             f"The context is a daily diary entry with Notion links. "
                             f"Encode it in markdown ``` marks"
