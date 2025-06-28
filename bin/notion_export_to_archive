@@ -238,16 +238,52 @@ for the_file in inbox_path.glob("*.md"):
             # Handle missing links
             if missing_links:
                 print_warning(f"Found {len(missing_links)} missing Notion links. Suggesting URLs...")
-                for link_text, notion_url in missing_links:
+                for link_text, notion_url, context, page_title, page_content in missing_links:
                     print_info(f"Looking up URL for: {Colors.BOLD}{link_text}{Colors.RESET}")
                     try:
+                        # Build prompt with all available context
+                        prompt_parts = []
+                        
+                        # Add linked page context if available
+                        if page_title or page_content:
+                            print(f"{Colors.DIM}DEBUG: Using linked page context:{Colors.RESET}")
+                            print(f"{Colors.DIM}  Title: '{page_title}'{Colors.RESET}")
+                            print(f"{Colors.DIM}  Content: '{page_content[:100]}{'...' if len(page_content) > 100 else ''}'{Colors.RESET}")
+                            
+                            prompt_parts.append(f"The Notion page linked with '{link_text}' contains:")
+                            if page_title:
+                                prompt_parts.append(f"- Title: {page_title}")
+                            if page_content:
+                                # Limit page content to 200 chars
+                                truncated_content = page_content[:200] + "..." if len(page_content) > 200 else page_content
+                                prompt_parts.append(f"- Content: {truncated_content}")
+                            prompt_parts.append("")
+                        
+                        # Add paragraph context if available
+                        if context and link_text in context:
+                            # Extract a snippet around the link text
+                            start_pos = max(0, context.find(link_text) - 150)
+                            end_pos = min(len(context), context.find(link_text) + len(link_text) + 150)
+                            snippet = context[start_pos:end_pos].strip()
+                            if start_pos > 0:
+                                snippet = "..." + snippet
+                            if end_pos < len(context):
+                                snippet = snippet + "..."
+                            prompt_parts.append(f"The diary entry mentions '{link_text}' in this context: \"{snippet}\"")
+                            prompt_parts.append("")
+                        
+                        # Build the main prompt
+                        prompt = "\n".join(prompt_parts) if prompt_parts else ""
+                        prompt += f"Find the canonical URL for '{link_text}'. "
+                        prompt += f"Look for any URLs mentioned that relate to {link_text}. "
+                        prompt += f"If an exact URL is mentioned, return that. Otherwise, return the most likely canonical URL. "
+                        prompt += f"Output only the URL in markdown code blocks."
+                        
+                        print(f"\n{Colors.DIM}DEBUG: Full prompt being sent to Perplexity:{Colors.RESET}")
+                        print(f"{Colors.DIM}{prompt}{Colors.RESET}\n")
+                        
                         # Call llm -m sonar to get URL suggestion
-                        llm_command = [
-                            "llm", "-m", "sonar", "-x",
-                            f"give me the canonical link to the subject matter of \"{link_text}\". "
-                            f"The context is a daily diary entry with Notion links. "
-                            f"Encode it in markdown ``` marks"
-                        ]
+                        llm_command = ["llm", "-m", "sonar", "-x", prompt]
                         result = subprocess.run(llm_command, capture_output=True, text=True, timeout=30)
                         if result.returncode == 0:
                             print_info(f"Suggested URL: {result.stdout.strip()}")
