@@ -24,6 +24,9 @@ def get_redirected_url(notion_url):
 
 
 class URLRewritingMarkdownRenderer(MarkdownRenderer):
+    def __init__(self):
+        super().__init__()
+        self.missing_links = []
     def render_link(self, element: inline.Link) -> str:
         link_text = self.render_children(element)
         link_title = (
@@ -47,7 +50,8 @@ class URLRewritingMarkdownRenderer(MarkdownRenderer):
             return f"[{link_text}]({element.dest}{title})"
         link_dest = get_redirected_url(element.dest)
         if link_dest == element.dest:
-            print(f"Warning: No redirection found for {element.dest}")
+            self.missing_links.append((link_text, element.dest))
+            print(f"⚠️  \033[33mWarning: No redirection found for {element.dest}\033[0m")
         if link_dest == element.dest:
             return f"[{link_text}]({element.dest}{title})"
         return f"[{link_text}]({link_dest}{title}) [🄽]({element.dest})"
@@ -56,4 +60,5 @@ class URLRewritingMarkdownRenderer(MarkdownRenderer):
 def transform_markdown(file):
     parsed_markdown = Markdown().parse(file.read())
     transforming_renderer = URLRewritingMarkdownRenderer()
-    return transforming_renderer.render(parsed_markdown)
+    rendered_content = transforming_renderer.render(parsed_markdown)
+    return rendered_content, transforming_renderer.missing_links
