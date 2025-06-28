@@ -75,7 +75,6 @@ def get_draft_emails_info():
     emails = response.json()['results']
     draft_emails_info = {}
     for email in emails:
-        print(email["status"])
         if email["status"] == "draft":
             subject = email["subject"]
             date_match = re.search(r"\d{4}-\d{2}-\d{2}", subject)
@@ -103,15 +102,18 @@ def create_buttondown_draft(subject, body, mail_id = None):
         response = requests.post(
                 "https://api.buttondown.email/v1/emails", headers=headers, data=json.dumps(data)
                 )
-    print("Buttondown: https://buttondown.email/emails")
+    
+    buttondown_url = "https://buttondown.email/emails"
+    print_info(f"Buttondown: {hyperlink(buttondown_url, 'buttondown.email/emails')}")
+    
     if response.status_code == 201:
-        print(f"Draft email created at Buttondown with subject: {subject}")
+        print_success(f"Draft email created at Buttondown with subject: {subject}")
     elif response.status_code == 200:
-        print(f"Draft email updated at Buttondown with subject: {subject}")
+        print_success(f"Draft email updated at Buttondown with subject: {subject}")
     elif response.headers.get("Content-Type", "").startswith("text/"):
-        print(f"Failed to create draft email at Buttondown: {response.text}")
+        print_error(f"Failed to create draft email at Buttondown: {response.text}")
     else:
-        print(f"Failed to create draft email at Buttondown: {response.status_code}")
+        print_error(f"Failed to create draft email at Buttondown: {response.status_code}")
 
 
 
@@ -138,11 +140,11 @@ inbox_path = ROOT_DIR / "daily/inbox"
 if len(sys.argv) > 1:
     notion_url = clean_notion_url(sys.argv[1])
     if notion_url.startswith("https://www.notion.so/filecoin/"):
-        print(f"Exporting Notion page: {notion_url}")
+        print_processing(f"Exporting Notion page: {hyperlink(notion_url)}")
         exported_file = export_notion_to_markdown(notion_url, inbox_path)
-        print(f"Exported to {exported_file}")
+        print_success(f"Exported to {exported_file}")
     else:
-        print("I only know how to export notion pages")
+        print_error("I only know how to export notion pages")
         sys.exit(1)
 
 if not archive_path.exists():
@@ -285,4 +287,4 @@ for the_file in inbox_path.glob("*.md"):
                 create_buttondown_draft(subject, the_line + rendered_markdown, draft_id)
             else:
                 create_buttondown_draft(subject, the_line + rendered_markdown)
-    print(f"Written: {archive_path}/{fname}")
+    print_success(f"Written: {Colors.BOLD}{archive_path}/{fname}{Colors.RESET}")
