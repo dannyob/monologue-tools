@@ -34,7 +34,7 @@ The `bin/m-activate` script:
 ## Key Scripts and Commands
 
 ### Main Processing Script
-- `bin/notion_export_to_archive` - Main Python script that:
+- `bin/notion2monologue` - Main Python script that:
   - Exports Notion pages to markdown using `notion-exporter`
   - Processes markdown files from `daily/inbox/` to `daily/archive/`
   - Creates/updates Buttondown email drafts via API
@@ -43,11 +43,11 @@ The `bin/m-activate` script:
 ### Supporting Scripts
 - `bin/transformnotion.py` - Markdown transformer that rewrites Notion URLs
 - `bin/copy_markdown_with_preamble.sh` - Formats content for Slack with preambles
-- `bin/test_notion_export_to_archive.py` - Unit tests for the main script
+- `bin/test_notion2monologue.py` - Unit tests for the main script
 
 ### Running Tests
 ```bash
-python bin/test_notion_export_to_archive.py
+python bin/test_notion2monologue.py
 ```
 
 ### Code Quality
