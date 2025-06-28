@@ -12,6 +12,7 @@ from markdown import Markdown
 import requests
 import json
 from zipfile import ZipFile
+from urllib.parse import urlparse, urlunparse
 import transformnotion
 
 # ANSI color codes and formatting
@@ -50,6 +51,13 @@ def print_error(message):
 
 def print_processing(message):
     print_status("⚙️", message, Colors.BLUE)
+
+def clean_notion_url(url):
+    """Strip URL fragments and query parameters from Notion URLs"""
+    parsed = urlparse(url)
+    # Remove query and fragment components
+    cleaned = urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
+    return cleaned
 
 BUTTONDOWN_API_KEY = os.getenv(
     "BUTTONDOWN_API_KEY", ""
@@ -128,7 +136,7 @@ archive_path = ROOT_DIR / "daily/archive"
 inbox_path = ROOT_DIR / "daily/inbox"
 
 if len(sys.argv) > 1:
-    notion_url = sys.argv[1]
+    notion_url = clean_notion_url(sys.argv[1])
     if notion_url.startswith("https://www.notion.so/filecoin/"):
         print(f"Exporting Notion page: {notion_url}")
         exported_file = export_notion_to_markdown(notion_url, inbox_path)
@@ -166,7 +174,7 @@ for the_file in inbox_path.glob("*.zip"):
     os.remove(the_file)
 
     # Skip the rest of the processing if a Notion URL was provided
-    if len(sys.argv) > 1 and sys.argv[1].startswith("https://www.notion.so/filecoin/"):
+    if len(sys.argv) > 1 and clean_notion_url(sys.argv[1]).startswith("https://www.notion.so/filecoin/"):
         continue
 
 
