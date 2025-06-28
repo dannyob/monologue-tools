@@ -50,6 +50,14 @@ The `bin/m-activate` script:
 python bin/test_notion_export_to_archive.py
 ```
 
+### Code Quality
+```bash
+# Pre-commit hooks with ruff are configured
+# Run linting manually:
+ruff check .
+ruff format .
+```
+
 ## Directory Structure
 
 - `daily/archive/` - Canonical daily entries (YYYY-MM-DD.md format)
@@ -61,6 +69,8 @@ python bin/test_notion_export_to_archive.py
 Required environment variables (stored in encrypted file):
 - `BUTTONDOWN_API_KEY` - For Buttondown email service API
 - `NOTION_TOKEN` - For Notion API access
+
+Note: Environment variables are encrypted with GPG and automatically loaded by `bin/m-activate`
 
 ## File Formats
 
@@ -90,3 +100,10 @@ Key Python packages:
 - `beautifulsoup4` - HTML/XML parsing
 
 The project also uses `notion-exporter` (npm package) for Notion page exports.
+
+## Architecture Notes
+
+- Mixed tech stack: Python (main processing) + Node.js (notion-exporter) + shell scripts
+- Pipeline: Notion → inbox → archive → email/Slack formatting
+- File processing preserves metadata headers for tracking and automation
+- Custom activation script provides project-specific environment and utilities
