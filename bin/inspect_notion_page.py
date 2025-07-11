@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 """Inspect raw Notion page data to understand property structure."""
 
+import json
 import os
 import sys
-import json
+
 from notion.client import NotionClient
 
 if "NOTION_TOKEN" not in os.environ:

@@ -1,13 +1,20 @@
-#!/usr/bin/env python
 import os
-from marko import Markdown
+
+from marko import Markdown, inline
 from marko.md_renderer import MarkdownRenderer
-from marko import inline
 from notion.client import NotionClient
 
-if "NOTION_TOKEN" not in os.environ:
-    raise TypeError("Could not find NOTION_TOKEN environment variable")
-client = NotionClient(token_v2=os.environ["NOTION_TOKEN"])
+# Lazy initialization of client
+_client = None
+
+
+def get_client():
+    global _client
+    if _client is None:
+        if "NOTION_TOKEN" not in os.environ:
+            raise TypeError("Could not find NOTION_TOKEN environment variable")
+        _client = NotionClient(token_v2=os.environ["NOTION_TOKEN"])
+    return _client
 
 
 def find_url_property_key(page):
@@ -39,7 +46,7 @@ def find_url_property_key(page):
 
 def get_redirected_url_and_content(notion_url):
     """Get redirect URL and page content for context."""
-    page = client.get_block(notion_url)
+    page = get_client().get_block(notion_url)
     alternative_url = None
     page_title = ""
     page_content = ""
@@ -209,7 +216,8 @@ def transform_markdown(file):
     return rendered_content, processed_missing_links
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for transformnotion."""
     import sys
 
     content, missing_links = transform_markdown(sys.stdin)
@@ -217,5 +225,15 @@ if __name__ == "__main__":
 
     # Report missing links to stderr
     if missing_links:
-        for link_text, notion_url, context, page_title, page_content in missing_links:
+        for (
+            link_text,
+            notion_url,
+            _context,
+            _page_title,
+            _page_content,
+        ) in missing_links:
             sys.stderr.write(f"Missing redirect for: {link_text} ({notion_url})\n")
+
+
+if __name__ == "__main__":
+    main()

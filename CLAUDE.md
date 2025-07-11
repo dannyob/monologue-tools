@@ -41,13 +41,13 @@ The `bin/m-activate` script:
   - Handles file metadata and date parsing
 
 ### Supporting Scripts
-- `bin/transformnotion.py` - Markdown transformer that rewrites Notion URLs
+- `src/monologue_tools/transformnotion.py` - Markdown transformer that rewrites Notion URLs
 - `bin/copy_markdown_with_preamble.sh` - Formats content for Slack with preambles
-- `bin/test_notion2monologue.py` - Unit tests for the main script
+- `tests/test_notion2monologue.py` - Unit tests for the main script
 
 ### Running Tests
 ```bash
-python bin/test_notion2monologue.py
+python tests/test_notion2monologue.py
 ```
 
 ### Code Quality
@@ -60,9 +60,11 @@ ruff format .
 
 ## Directory Structure
 
+- `src/monologue_tools/` - Main Python package containing core functionality
 - `daily/archive/` - Canonical daily entries (YYYY-MM-DD.md format)
 - `daily/inbox/` - Temporary storage for Notion exports before processing
 - `bin/` - Executable scripts and utilities
+- `tests/` - Unit tests for the package
 
 ## Key Environment Variables
 

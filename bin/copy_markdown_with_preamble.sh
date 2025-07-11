@@ -37,7 +37,7 @@ if [ ! -f "$FILENAME" ]; then
 fi
 
 print_status "📄" "Processing file: ${BOLD}$FILENAME${RESET}" "$CYAN"
- 
+
 get_value_from_key() {
   local file="$FILENAME"
   local key="$1"

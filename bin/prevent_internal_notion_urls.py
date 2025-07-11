@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Pre-commit hook to prevent committing internal Notion URLs."""
 
-import sys
 import re
+import sys
 
 # Pattern to match internal Notion URLs
 # Matches: https://notion.so/filecoin/... or https://www.notion.so/filecoin/...
@@ -27,7 +27,7 @@ ALLOWED_REGEX = re.compile("|".join(ALLOWED_PATTERNS), re.IGNORECASE)
 def check_file(filepath):
     """Check a single file for internal Notion URLs."""
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             content = f.read()
     except (UnicodeDecodeError, FileNotFoundError):
         # Skip binary files or files that can't be read

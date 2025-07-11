@@ -1,15 +1,13 @@
-import unittest
-import sys
 import os
+import sys
+import unittest
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the src directory to the path
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
+)
 
-# Import the script by executing it as a module
-script_path = os.path.join(os.path.dirname(__file__), "notion2monologue")
-with open(script_path, "r") as f:
-    exec_globals = {"__file__": script_path, "__name__": "notion2monologue"}
-    exec(f.read(), exec_globals)
-    filename_to_notion_id = exec_globals["filename_to_notion_id"]
+from monologue_tools.notion2monologue import filename_to_notion_id
 
 
 class TestNotion2Monologue(unittest.TestCase):
