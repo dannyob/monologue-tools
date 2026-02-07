@@ -271,10 +271,15 @@ class NotionPublisher:
             properties={"title": {"title": [{"text": {"content": title}}]}},
         )
 
-        # Delete all existing blocks
-        existing = self.client.blocks.children.list(block_id=page_id)
-        for block in existing["results"]:
-            self.client.blocks.delete(block_id=block["id"])
+        # Delete all existing blocks (paginated)
+        while True:
+            existing = self.client.blocks.children.list(block_id=page_id)
+            if not existing["results"]:
+                break
+            for block in existing["results"]:
+                self.client.blocks.delete(block_id=block["id"])
+            if not existing.get("has_more"):
+                break
 
         # Append new blocks in batches
         blocks = markdown_to_notion_blocks(markdown_body)
