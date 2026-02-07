@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from .markdown_utils import parse_markdown_file
+from .markdown_utils import parse_markdown_file, write_metadata
 from .output import hyperlink, print_error, print_info, print_processing, print_success
 
 
@@ -34,13 +34,14 @@ def publish(file: Path, targets: tuple, dry_run: bool, canvas: bool):
     """Publish a markdown file to configured platforms.
 
     Reads a markdown file and pushes it to Notion, Buttondown, and/or Slack.
-    The file can be plain markdown (with an H1 containing the date and title)
-    or an archive-format file with metadata headers.
+    On first publish, creates new entries. On re-publish, updates existing
+    entries using IDs stored in the file's metadata headers.
     """
     if not targets:
         targets = ("notion", "buttondown", "slack")
 
     entry = parse_markdown_file(file)
+    meta = entry.metadata
     print_processing(f"Publishing: {entry.subject}")
 
     if dry_run:
@@ -49,20 +50,40 @@ def publish(file: Path, targets: tuple, dry_run: bool, canvas: bool):
         print_info(f"Subject: {entry.subject}")
         print_info(f"Body: {len(entry.body)} characters")
         print_info(f"Targets: {', '.join(targets)}")
+        for key in ("notion-id", "buttondown-id", "slack-ts"):
+            if key in meta:
+                print_info(f"Existing {key}: {meta[key]} (will update)")
         return
 
     results = {}
+    metadata_updates = {}
 
     if "notion" in targets:
-        results["notion"] = _publish_notion(entry)
+        url = _publish_notion(entry)
+        results["notion"] = url
+        if url:
+            metadata_updates["notion-id"] = url
 
     if "buttondown" in targets:
-        results["buttondown"] = _publish_buttondown(entry)
+        email_id = _publish_buttondown(entry)
+        results["buttondown"] = email_id
+        if email_id:
+            metadata_updates["buttondown-id"] = email_id
 
     if "slack" in targets:
-        results["slack"] = _publish_slack(
+        slack_result = _publish_slack(
             entry, canvas=canvas, notion_url=results.get("notion")
         )
+        results["slack"] = slack_result
+        if slack_result:
+            metadata_updates["slack-ts"] = slack_result
+            channel = os.environ.get("SLACK_CHANNEL", "#monologue-danny")
+            metadata_updates["slack-channel"] = channel
+
+    # Write metadata back to the source file for idempotent re-publishing
+    if metadata_updates:
+        write_metadata(file, metadata_updates)
+        print_info(f"Metadata saved to {file}")
 
     published = [t for t in targets if results.get(t)]
     if published:
@@ -81,6 +102,9 @@ def info(file: Path):
     click.echo(f"Subject: {entry.subject}")
     if entry.notion_id:
         click.echo(f"Notion:  {entry.notion_id}")
+    for key in ("buttondown-id", "slack-ts", "slack-channel"):
+        if key in entry.metadata:
+            click.echo(f"{key.title()}: {entry.metadata[key]}")
     click.echo(f"Body:    {len(entry.body)} characters")
 
 
@@ -98,8 +122,14 @@ def _publish_notion(entry) -> str | None:
     from .notion_push import NotionPublisher
 
     publisher = NotionPublisher(token, parent)
-    url = publisher.publish(entry.subject, entry.body)
-    print_success(f"Notion: {hyperlink(url)}")
+
+    existing_url = entry.metadata.get("notion-id")
+    if existing_url:
+        url = publisher.update(existing_url, entry.subject, entry.body)
+        print_success(f"Notion: updated {hyperlink(url)}")
+    else:
+        url = publisher.publish(entry.subject, entry.body)
+        print_success(f"Notion: created {hyperlink(url)}")
     return url
 
 
@@ -115,7 +145,7 @@ def _publish_buttondown(entry) -> str | None:
     client = ButtondownClient(api_key)
     result = client.publish(entry.subject, entry.body)
     buttondown_url = "https://buttondown.email/emails"
-    print_success(f"Buttondown: {hyperlink(buttondown_url, 'draft created')}")
+    print_success(f"Buttondown: {hyperlink(buttondown_url, 'draft created/updated')}")
     return result.get("id")
 
 
@@ -135,6 +165,16 @@ def _publish_slack(entry, canvas=False, notion_url=None) -> str | None:
         result = publisher.post_canvas(entry.subject, entry.body)
         print_success(f"Slack: canvas created in {channel}")
         return result.get("canvas_id")
+
+    existing_ts = entry.metadata.get("slack-ts")
+    if existing_ts:
+        result = publisher.update_message(
+            existing_ts,
+            entry.subject,
+            entry.body,
+            notion_url=notion_url,
+        )
+        print_success(f"Slack: updated in {channel}")
     else:
         result = publisher.post_message(
             entry.subject,
@@ -142,4 +182,4 @@ def _publish_slack(entry, canvas=False, notion_url=None) -> str | None:
             notion_url=notion_url,
         )
         print_success(f"Slack: posted to {channel}")
-        return result.get("ts")
+    return result.get("ts")

@@ -260,3 +260,47 @@ class NotionPublisher:
             self.client.blocks.children.append(block_id=page_id, children=batch)
 
         return response["url"]
+
+    def update(self, page_url: str, title: str, markdown_body: str) -> str:
+        """Update an existing Notion page's title and content. Returns the page URL."""
+        page_id = page_url_to_id(page_url)
+
+        # Update title
+        self.client.pages.update(
+            page_id=page_id,
+            properties={"title": {"title": [{"text": {"content": title}}]}},
+        )
+
+        # Delete all existing blocks
+        existing = self.client.blocks.children.list(block_id=page_id)
+        for block in existing["results"]:
+            self.client.blocks.delete(block_id=block["id"])
+
+        # Append new blocks in batches
+        blocks = markdown_to_notion_blocks(markdown_body)
+        while blocks:
+            batch = blocks[:BATCH_SIZE]
+            blocks = blocks[BATCH_SIZE:]
+            self.client.blocks.children.append(block_id=page_id, children=batch)
+
+        return page_url
+
+
+def page_url_to_id(url: str) -> str:
+    """Extract a Notion page ID from a URL.
+
+    URLs look like: https://www.notion.so/Page-Title-abc123def456...
+    or just: https://notion.so/workspace/abc123def456...
+    The last 32 hex characters are the page ID.
+    """
+    # Strip query params and fragments
+    path = url.split("?")[0].split("#")[0]
+    # Find the last 32 hex chars
+    match = re.search(r"([a-f0-9]{32})$", path.replace("-", ""))
+    if match:
+        hex_id = match.group(1)
+        # Format as UUID: 8-4-4-4-12
+        return (
+            f"{hex_id[:8]}-{hex_id[8:12]}-{hex_id[12:16]}-{hex_id[16:20]}-{hex_id[20:]}"
+        )
+    raise ValueError(f"Cannot extract page ID from URL: {url}")

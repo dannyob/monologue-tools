@@ -17,14 +17,28 @@ class SlackPublisher:
         notion_url: str | None = None,
         buttondown_url: str | None = None,
     ) -> dict:
+        text = self._build_message_text(subject, body, notion_url, buttondown_url)
+        return self.client.chat_postMessage(channel=self.channel, text=text)
+
+    def update_message(
+        self,
+        ts: str,
+        subject: str,
+        body: str,
+        notion_url: str | None = None,
+        buttondown_url: str | None = None,
+    ) -> dict:
+        text = self._build_message_text(subject, body, notion_url, buttondown_url)
+        return self.client.chat_update(channel=self.channel, ts=ts, text=text)
+
+    def _build_message_text(self, subject, body, notion_url=None, buttondown_url=None):
         preamble = f"*{subject}*\n"
         if notion_url:
             preamble += f"Notion: <{notion_url}>\n"
         if buttondown_url:
             preamble += f"Buttondown: <{buttondown_url}>\n"
         preamble += "\n"
-        text = preamble + markdown_to_mrkdwn(body)
-        return self.client.chat_postMessage(channel=self.channel, text=text)
+        return preamble + markdown_to_mrkdwn(body)
 
     def create_canvas(self, title: str, body: str) -> dict:
         return self.client.canvases_create(

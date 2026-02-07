@@ -5,6 +5,7 @@ import pytest
 from monologue_tools.notion_push import (
     NotionPublisher,
     markdown_to_notion_blocks,
+    page_url_to_id,
     parse_rich_text,
 )
 
@@ -284,3 +285,51 @@ class TestNotionPublisher:
         calls = mock_client.blocks.children.append.call_args_list
         assert len(calls[0].kwargs["children"]) == 100
         assert len(calls[1].kwargs["children"]) == 50
+
+    @patch("monologue_tools.notion_push.Client")
+    def test_update_replaces_content(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.blocks.children.list.return_value = {
+            "results": [
+                {"id": "block-1"},
+                {"id": "block-2"},
+            ]
+        }
+
+        publisher = NotionPublisher(token="fake-token", parent_page_id="parent-id")
+        url = publisher.update(
+            "https://www.notion.so/My-Page-abcdef12345678901234567890123456",
+            "Updated Title",
+            "New content here.",
+        )
+
+        # Title updated
+        mock_client.pages.update.assert_called_once()
+        # Old blocks deleted
+        assert mock_client.blocks.delete.call_count == 2
+        # New blocks appended
+        mock_client.blocks.children.append.assert_called_once()
+
+        assert url == "https://www.notion.so/My-Page-abcdef12345678901234567890123456"
+
+
+class TestPageUrlToId:
+    def test_standard_url(self):
+        url = "https://www.notion.so/My-Page-abcdef12345678901234567890123456"
+        page_id = page_url_to_id(url)
+        assert page_id == "abcdef12-3456-7890-1234-567890123456"
+
+    def test_url_with_query_params(self):
+        url = "https://www.notion.so/My-Page-abcdef12345678901234567890123456?pvs=4"
+        page_id = page_url_to_id(url)
+        assert page_id == "abcdef12-3456-7890-1234-567890123456"
+
+    def test_workspace_url(self):
+        url = "https://notion.so/filecoin/abcdef12345678901234567890123456"
+        page_id = page_url_to_id(url)
+        assert page_id == "abcdef12-3456-7890-1234-567890123456"
+
+    def test_invalid_url_raises(self):
+        with pytest.raises(ValueError):
+            page_url_to_id("https://example.com/not-a-notion-page")

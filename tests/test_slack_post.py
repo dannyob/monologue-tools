@@ -189,3 +189,36 @@ class TestSlackPublisher:
         pub.post_message(subject="Test", body="body")
 
         assert mock_client.chat_postMessage.call_args[1]["channel"] == "#other-channel"
+
+    @patch("monologue_tools.slack_post.WebClient")
+    def test_update_message(self, MockWebClient):
+        mock_client = MagicMock()
+        MockWebClient.return_value = mock_client
+        mock_client.chat_update.return_value = {"ok": True, "ts": "123.456"}
+
+        pub = SlackPublisher(token="xoxb-fake")
+        pub.update_message(ts="123.456", subject="Updated", body="New **body**")
+
+        mock_client.chat_update.assert_called_once()
+        call_kwargs = mock_client.chat_update.call_args[1]
+        assert call_kwargs["channel"] == "#monologue-danny"
+        assert call_kwargs["ts"] == "123.456"
+        assert "*Updated*" in call_kwargs["text"]
+        assert "*body*" in call_kwargs["text"]
+
+    @patch("monologue_tools.slack_post.WebClient")
+    def test_update_message_with_urls(self, MockWebClient):
+        mock_client = MagicMock()
+        MockWebClient.return_value = mock_client
+        mock_client.chat_update.return_value = {"ok": True}
+
+        pub = SlackPublisher(token="xoxb-fake")
+        pub.update_message(
+            ts="123.456",
+            subject="Test",
+            body="body",
+            notion_url="https://notion.so/page",
+        )
+
+        text = mock_client.chat_update.call_args[1]["text"]
+        assert "Notion: <https://notion.so/page>" in text

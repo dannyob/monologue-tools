@@ -5,6 +5,17 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
+METADATA_KEYS = frozenset(
+    {
+        "notion-id",
+        "last-modified",
+        "subject",
+        "buttondown-id",
+        "slack-ts",
+        "slack-channel",
+    }
+)
+
 
 @dataclass
 class MonologueEntry:
@@ -48,12 +59,7 @@ def parse_markdown(text: str, source_path: Path | None = None) -> MonologueEntry
         if ":" in line and not line.startswith("#"):
             key, _, value = line.partition(":")
             key = key.strip()
-            if key.lower() in (
-                "notion-id",
-                "last-modified",
-                "subject",
-                "buttondown-id",
-            ):
+            if key.lower() in METADATA_KEYS:
                 metadata[key.lower()] = value.strip()
             else:
                 break  # Not a metadata line
@@ -114,3 +120,67 @@ def _parse_date_title(text: str) -> tuple[date, str]:
         remainder = text[date_match.end() :].lstrip(": ").strip()
         return entry_date, remainder
     return date.today(), text.strip()
+
+
+def write_metadata(path: Path, updates: dict[str, str]) -> None:
+    """Update metadata headers in a markdown file, preserving body content.
+
+    If the file already has metadata headers, they are updated/extended.
+    If the file is plain markdown (H1 heading), metadata headers are prepended
+    and the H1 is converted to a Subject header.
+    """
+    text = path.read_text()
+    lines = text.split("\n")
+
+    # Parse existing metadata headers
+    existing_meta = {}
+    body_start = 0
+    for i, line in enumerate(lines):
+        if line.strip() == "":
+            body_start = i + 1
+            break
+        if ":" in line and not line.startswith("#"):
+            key, _, value = line.partition(":")
+            key = key.strip()
+            if key.lower() in METADATA_KEYS:
+                existing_meta[key.lower()] = value.strip()
+            else:
+                break
+        else:
+            break
+
+    if existing_meta:
+        # File already has metadata - merge updates
+        for k, v in updates.items():
+            existing_meta[k.lower()] = v
+        body = "\n".join(lines[body_start:])
+    else:
+        # Plain markdown file - need to extract subject from H1
+        entry = parse_markdown(text, source_path=path)
+        existing_meta["subject"] = entry.subject
+        for k, v in updates.items():
+            existing_meta[k.lower()] = v
+        body = entry.body
+
+    # Write back: metadata headers + blank line + body
+    header_order = [
+        "notion-id",
+        "buttondown-id",
+        "slack-ts",
+        "slack-channel",
+        "last-modified",
+        "subject",
+    ]
+    header_lines = []
+    for key in header_order:
+        if key in existing_meta:
+            # Capitalize header names nicely
+            nice_key = key.title().replace("-", "-")
+            header_lines.append(f"{nice_key}: {existing_meta[key]}")
+    # Any remaining keys not in the order
+    for key, value in existing_meta.items():
+        if key not in header_order:
+            nice_key = key.title().replace("-", "-")
+            header_lines.append(f"{nice_key}: {value}")
+
+    path.write_text("\n".join(header_lines) + "\n\n" + body + "\n")
