@@ -4,38 +4,33 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "monologue-tools"
-version = "0.1.0"
-description = "Personal monologue tools for managing daily diary entries and email newsletters"
+version = "0.2.0"
+description = "Publish daily monologue entries to Notion, Buttondown, and Slack"
 readme = "README.md"
-requires-python = ">=3.9"
-license = "MIT"
+requires-python = ">=3.11"
+license = "AGPL-3.0-or-later"
 authors = [
     {name = "Danny O'Brien", email = "danny@spesh.com"},
 ]
-keywords = ["notion", "diary", "newsletter", "markdown", "buttondown"]
+keywords = ["notion", "diary", "newsletter", "markdown", "buttondown", "slack"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Office/Business",
     "Topic :: Text Processing :: Markup :: Markdown",
 ]
 
 dependencies = [
-    "beautifulsoup4>=4.12.3",
-    "markdown>=3.6",
-    "marko>=2.0.3",
-    "notion @ git+https://github.com/jamalex/notion-py.git@b3630b8c425fd217de5c08800ffc761474d4089b",
+    "click>=8.0",
     "notion-client>=2.2.1",
     "requests>=2.31.0",
-    "python-slugify>=8.0.4",
+    "slack-sdk>=3.27.0",
 ]
 
 [project.optional-dependencies]
@@ -50,8 +45,7 @@ test = [
 ]
 
 [project.scripts]
-notion2monologue = "monologue_tools.notion2monologue:main"
-transformnotion = "monologue_tools.transformnotion:main"
+monologue = "monologue_tools.cli:cli"
 
 [project.urls]
 "Homepage" = "https://github.com/dannyob/monologue-tools"
@@ -64,9 +58,13 @@ include-package-data = true
 [tool.setuptools.package-data]
 "*" = ["*.md", "*.txt"]
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 88
-target-version = "py38"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [

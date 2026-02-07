@@ -4,108 +4,118 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a personal monologue tools repository for managing daily diary entries and email newsletters. The workflow involves:
+A CLI tool for publishing daily monologue entries to multiple platforms. The workflow:
 
-1. Writing entries in Notion
-2. Exporting from Notion to local markdown files
-3. Processing markdown for different output formats (email, Slack)
-4. Publishing to Buttondown email service
+1. Write a markdown file locally (with `# YYYY-MM-DD: Title` heading)
+2. Run `monologue publish <file.md>` to push to Notion, Buttondown, and Slack
 
 ## Environment Setup
 
-The project uses a Python virtual environment with encrypted environment variables:
-
 ```bash
-# Initial setup
 python -m venv .venv --prompt mono
-pip install -r requirements.txt
-npm -g install notion-exporter
+pip install -e ".[dev,test]"
 
-# Activate environment (source this file)
+# Activate environment (loads encrypted secrets)
 . bin/m-activate
 ```
 
-The `bin/m-activate` script:
-- Activates the Python virtual environment
-- Adds `bin/` to PATH
-- Loads encrypted environment variables from `~/Private/secrets/monologue/env.gpg`
-- Sets up project-specific shell utilities
+The `bin/m-activate` script activates the venv and loads encrypted environment variables from `~/Private/secrets/monologue/env.gpg`.
 
-## Key Scripts and Commands
+## CLI Usage
 
-### Main Processing Script
-- `bin/notion2monologue` - Main Python script that:
-  - Exports Notion pages to markdown using `notion-exporter`
-  - Processes markdown files from `daily/inbox/` to `daily/archive/`
-  - Creates/updates Buttondown email drafts via API
-  - Handles file metadata and date parsing
-
-### Supporting Scripts
-- `src/monologue_tools/transformnotion.py` - Markdown transformer that rewrites Notion URLs
-- `bin/copy_markdown_with_preamble.sh` - Formats content for Slack with preambles
-- `tests/test_notion2monologue.py` - Unit tests for the main script
-
-### Running Tests
 ```bash
-python tests/test_notion2monologue.py
+# Publish to all platforms
+monologue publish daily/2025-02-07.md
+
+# Publish to specific targets
+monologue publish post.md --to buttondown --to slack
+
+# Dry run (show what would be published)
+monologue publish post.md --dry-run
+
+# Post to Slack as a Canvas instead of a message
+monologue publish post.md --to slack --canvas
+
+# Show parsed metadata
+monologue info post.md
 ```
 
-### Code Quality
+## Running Tests
+
 ```bash
-# Pre-commit hooks with ruff are configured
-# Run linting manually:
+pytest                  # run all tests
+pytest -v               # verbose output
+pytest tests/test_cli.py  # specific test file
+```
+
+## Code Quality
+
+```bash
 ruff check .
 ruff format .
 ```
 
-## Directory Structure
+## Project Structure
 
-- `src/monologue_tools/` - Main Python package containing core functionality
-- `daily/archive/` - Canonical daily entries (YYYY-MM-DD.md format)
-- `daily/inbox/` - Temporary storage for Notion exports before processing
-- `bin/` - Executable scripts and utilities
-- `tests/` - Unit tests for the package
-
-## Key Environment Variables
-
-Required environment variables (stored in encrypted file):
-- `BUTTONDOWN_API_KEY` - For Buttondown email service API
-- `NOTION_TOKEN` - For Notion API access
-
-Note: Environment variables are encrypted with GPG and automatically loaded by `bin/m-activate`
-
-## File Formats
-
-### Archive Files
-Each file in `daily/archive/` has metadata headers:
 ```
-Notion-Id: https://notion.so/filecoin/[32-char-hex-id]
-Last-Modified: [ISO datetime]
-Subject: [YYYY-MM-DD subject line]
-
-## [Content starts here]
+src/monologue_tools/
+  cli.py             - Click CLI (entry point: `monologue`)
+  buttondown.py      - Buttondown email API client
+  notion_push.py     - Push markdown to Notion pages
+  slack_post.py      - Post to Slack (messages or canvases)
+  markdown_utils.py  - Parse monologue markdown files
+  output.py          - Terminal output utilities
+tests/
+  test_cli.py
+  test_buttondown.py
+  test_notion_push.py
+  test_slack_post.py
+  test_markdown_utils.py
+daily/archive/         - Published entries (YYYY-MM-DD.md)
+bin/                   - Legacy scripts and m-activate
 ```
 
-### Workflow
-1. Export from Notion using the main script with a Notion URL
-2. Script processes inbox files and moves them to archive
-3. Creates/updates Buttondown email drafts automatically
-4. Use `copy_markdown_with_preamble.sh` to format for Slack posting
+## Environment Variables
+
+Required (loaded by `bin/m-activate`):
+- `BUTTONDOWN_API_KEY` - Buttondown email service API key
+- `NOTION_TOKEN` - Notion integration token
+- `NOTION_PARENT_PAGE_ID` - Notion page ID where new pages are created
+- `SLACK_BOT_TOKEN` - Slack bot token (xoxb-...)
+- `SLACK_CHANNEL` - Slack channel (default: `#monologue-danny`)
+
+Each target is skipped gracefully if its env vars aren't set.
+
+## Input Formats
+
+### Plain markdown (preferred)
+```markdown
+# 2025-02-07: My Post Title
+
+## Working on
+Content here...
+```
+
+### Archive format (backward compatible)
+```
+Notion-Id: https://notion.so/filecoin/[hex-id]
+Subject: 2025-02-07: My Post Title
+
+## Working on
+Content here...
+```
 
 ## Dependencies
 
-Key Python packages:
-- `markdown` - Markdown processing
-- `requests` - HTTP API calls
-- `marko` - Advanced markdown parsing
-- `notion-py` - Notion API integration
-- `beautifulsoup4` - HTML/XML parsing
-
-The project also uses `notion-exporter` (npm package) for Notion page exports.
+- `click` - CLI framework
+- `requests` - Buttondown API
+- `notion-client` - Official Notion SDK
+- `slack-sdk` - Official Slack SDK
 
 ## Architecture Notes
 
-- Mixed tech stack: Python (main processing) + Node.js (notion-exporter) + shell scripts
-- Pipeline: Notion → inbox → archive → email/Slack formatting
-- File processing preserves metadata headers for tracking and automation
-- Custom activation script provides project-specific environment and utilities
+- Single CLI entry point (`monologue`) with Click
+- Each publishing target is an independent module with its own client class
+- Markdown parsing supports both plain files and the legacy archive format
+- All API interactions use proper SDK clients, no shell subprocess calls
+- 70 tests covering all modules
