@@ -176,29 +176,25 @@ def markdown_to_notion_blocks(markdown: str) -> list[dict]:
             i += 1
             continue
 
-        # Bulleted list
-        if re.match(r"^[-*] ", line):
-            text = line[2:].strip()
-            blocks.append(
-                {
-                    "type": "bulleted_list_item",
-                    "bulleted_list_item": {"rich_text": parse_rich_text(text)},
-                }
-            )
-            i += 1
+        # List (bulleted or numbered, with nesting)
+        if re.match(r"^[-*] ", line) or re.match(r"^\d+\. ", line):
+            list_items, i = _collect_list_items(lines, i)
+            blocks.extend(_build_nested_blocks(list_items))
             continue
 
-        # Numbered list
-        m = re.match(r"^\d+\. (.+)", line)
-        if m:
-            blocks.append(
-                {
-                    "type": "numbered_list_item",
-                    "numbered_list_item": {
-                        "rich_text": parse_rich_text(m.group(1).strip())
-                    },
-                }
-            )
+        # Image
+        img_match = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)$", line)
+        if img_match:
+            block = {
+                "type": "image",
+                "image": {
+                    "type": "external",
+                    "external": {"url": img_match.group(2)},
+                },
+            }
+            if img_match.group(1):
+                block["image"]["caption"] = parse_rich_text(img_match.group(1))
+            blocks.append(block)
             i += 1
             continue
 
@@ -210,7 +206,7 @@ def markdown_to_notion_blocks(markdown: str) -> list[dict]:
             if not next_line.strip():
                 break
             if re.match(
-                r"^(#{1,3} |[-*] |\d+\. |```|> |---$|___$|\*\*\*$)",
+                r"^(#{1,3} |[-*] |\d+\. |```|> |---$|___$|\*\*\*$|!\[)",
                 next_line,
             ):
                 break
@@ -223,6 +219,67 @@ def markdown_to_notion_blocks(markdown: str) -> list[dict]:
                 "paragraph": {"rich_text": parse_rich_text(" ".join(para_lines))},
             }
         )
+
+    return blocks
+
+
+def _collect_list_items(lines: list[str], i: int) -> tuple[list[tuple], int]:
+    """Collect consecutive list items with their indentation levels.
+
+    Returns a list of (indent, list_type, text) tuples and the next line index.
+    """
+    items = []
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip():
+            break
+        indent = len(line) - len(line.lstrip())
+        stripped = line.lstrip()
+
+        bullet = re.match(r"^[-*] (.+)", stripped)
+        numbered = re.match(r"^\d+\. (.+)", stripped)
+
+        if bullet:
+            items.append((indent, "bulleted_list_item", bullet.group(1).strip()))
+            i += 1
+        elif numbered:
+            items.append((indent, "numbered_list_item", numbered.group(1).strip()))
+            i += 1
+        else:
+            break
+
+    return items, i
+
+
+def _build_nested_blocks(items: list[tuple]) -> list[dict]:
+    """Convert flat (indent, type, text) tuples into nested Notion list blocks."""
+    if not items:
+        return []
+
+    blocks = []
+    base_indent = items[0][0]
+    j = 0
+
+    while j < len(items):
+        indent, block_type, text = items[j]
+
+        # Collect children: items immediately following with deeper indentation
+        children_items = []
+        k = j + 1
+        while k < len(items) and items[k][0] > base_indent:
+            children_items.append(items[k])
+            k += 1
+
+        block = {
+            "type": block_type,
+            block_type: {"rich_text": parse_rich_text(text)},
+        }
+
+        if children_items:
+            block[block_type]["children"] = _build_nested_blocks(children_items)
+
+        blocks.append(block)
+        j = k
 
     return blocks
 

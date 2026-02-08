@@ -209,6 +209,79 @@ class TestMarkdownToNotionBlocks:
         # H1 should be skipped since title is separate
         assert len(blocks) == 0
 
+    def test_nested_bulleted_list(self):
+        md = "- parent\n  - child one\n  - child two\n- sibling"
+        blocks = markdown_to_notion_blocks(md)
+        assert len(blocks) == 2
+        assert blocks[0]["type"] == "bulleted_list_item"
+        assert blocks[0]["bulleted_list_item"]["rich_text"] == [
+            {"type": "text", "text": {"content": "parent"}}
+        ]
+        children = blocks[0]["bulleted_list_item"]["children"]
+        assert len(children) == 2
+        assert children[0]["type"] == "bulleted_list_item"
+        assert children[0]["bulleted_list_item"]["rich_text"] == [
+            {"type": "text", "text": {"content": "child one"}}
+        ]
+        assert blocks[1]["bulleted_list_item"]["rich_text"] == [
+            {"type": "text", "text": {"content": "sibling"}}
+        ]
+        assert "children" not in blocks[1]["bulleted_list_item"]
+
+    def test_nested_numbered_list(self):
+        md = "1. first\n   1. sub one\n   2. sub two\n2. second"
+        blocks = markdown_to_notion_blocks(md)
+        assert len(blocks) == 2
+        assert blocks[0]["type"] == "numbered_list_item"
+        children = blocks[0]["numbered_list_item"]["children"]
+        assert len(children) == 2
+        assert children[0]["type"] == "numbered_list_item"
+        assert blocks[1]["type"] == "numbered_list_item"
+
+    def test_deeply_nested_list(self):
+        md = "- a\n  - b\n    - c"
+        blocks = markdown_to_notion_blocks(md)
+        assert len(blocks) == 1
+        children = blocks[0]["bulleted_list_item"]["children"]
+        assert len(children) == 1
+        grandchildren = children[0]["bulleted_list_item"]["children"]
+        assert len(grandchildren) == 1
+        assert grandchildren[0]["bulleted_list_item"]["rich_text"] == [
+            {"type": "text", "text": {"content": "c"}}
+        ]
+
+    def test_mixed_nested_list_types(self):
+        md = "- bullet\n  1. numbered child"
+        blocks = markdown_to_notion_blocks(md)
+        assert len(blocks) == 1
+        children = blocks[0]["bulleted_list_item"]["children"]
+        assert len(children) == 1
+        assert children[0]["type"] == "numbered_list_item"
+
+    def test_image(self):
+        md = "![photo](https://example.com/img.png)"
+        blocks = markdown_to_notion_blocks(md)
+        assert len(blocks) == 1
+        assert blocks[0]["type"] == "image"
+        assert blocks[0]["image"]["type"] == "external"
+        assert blocks[0]["image"]["external"]["url"] == "https://example.com/img.png"
+        assert blocks[0]["image"]["caption"] == [
+            {"type": "text", "text": {"content": "photo"}}
+        ]
+
+    def test_image_no_alt(self):
+        md = "![](https://example.com/img.png)"
+        blocks = markdown_to_notion_blocks(md)
+        assert len(blocks) == 1
+        assert blocks[0]["type"] == "image"
+        assert "caption" not in blocks[0]["image"]
+
+    def test_image_not_absorbed_into_paragraph(self):
+        md = "Some text.\n\n![pic](https://example.com/a.png)\n\nMore text."
+        blocks = markdown_to_notion_blocks(md)
+        types = [b["type"] for b in blocks]
+        assert types == ["paragraph", "image", "paragraph"]
+
 
 class TestNotionPublisher:
     @patch("monologue_tools.notion_push.Client")
