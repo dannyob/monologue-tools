@@ -30,14 +30,21 @@ def cli():
 @click.option(
     "--canvas", is_flag=True, help="Post to Slack as a Canvas instead of a message"
 )
-def publish(file: Path, targets: tuple, dry_run: bool, canvas: bool):
+@click.option(
+    "--draft",
+    is_flag=True,
+    help="Draft only: publish to Buttondown (as draft), skip Notion and Slack",
+)
+def publish(file: Path, targets: tuple, dry_run: bool, canvas: bool, draft: bool):
     """Publish a markdown file to configured platforms.
 
     Reads a markdown file and pushes it to Notion, Buttondown, and/or Slack.
     On first publish, creates new entries. On re-publish, updates existing
     entries using IDs stored in the file's metadata headers.
     """
-    if not targets:
+    if draft:
+        targets = ("buttondown",)
+    elif not targets:
         targets = ("notion", "buttondown", "slack")
 
     entry = parse_markdown_file(file)

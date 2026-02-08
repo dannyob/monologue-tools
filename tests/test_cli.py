@@ -60,6 +60,38 @@ class TestPublishDryRun:
         assert "buttondown" in result.output
 
 
+class TestPublishDraft:
+    def test_draft_only_targets_buttondown(self, runner, sample_markdown):
+        """--draft should only attempt Buttondown, skipping Notion and Slack."""
+        env = {
+            k: v
+            for k, v in os.environ.items()
+            if k
+            not in (
+                "NOTION_TOKEN",
+                "NOTION_PARENT_PAGE_ID",
+                "BUTTONDOWN_API_KEY",
+                "SLACK_BOT_TOKEN",
+            )
+        }
+        result = runner.invoke(
+            cli, ["publish", str(sample_markdown), "--draft"], env=env
+        )
+        assert result.exit_code == 0
+        assert "BUTTONDOWN_API_KEY not set" in result.output
+        # Should NOT mention Notion or Slack at all
+        assert "NOTION" not in result.output
+        assert "SLACK" not in result.output
+
+    def test_draft_dry_run_shows_only_buttondown(self, runner, sample_markdown):
+        result = runner.invoke(
+            cli, ["publish", str(sample_markdown), "--draft", "--dry-run"]
+        )
+        assert result.exit_code == 0
+        assert "buttondown" in result.output
+        assert "notion" not in result.output.lower().split("notion_id")[0]
+
+
 class TestPublishNoCredentials:
     def test_publish_without_env_vars(self, runner, sample_markdown):
         """Without env vars, all targets should be skipped gracefully."""
