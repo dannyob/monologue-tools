@@ -29,10 +29,11 @@ def sample_markdown(tmp_path):
 def archive_markdown(tmp_path):
     md_file = tmp_path / "2024-04-23.md"
     md_file.write_text(
-        "Notion-Id: https://notion.so/filecoin/abc123\n"
-        "Last-Modified: 2024-04-24T04:30:51+00:00\n"
-        "Subject: 2024-04-23: Numbers, TechSoup, Krazam\n"
-        "\n"
+        "---\n"
+        "title: Numbers, TechSoup, Krazam\n"
+        "date: 2024-04-23\n"
+        "notion_id: https://notion.so/filecoin/abc123\n"
+        "---\n\n"
         "## Three Things I Did\n\nSome content.\n"
     )
     return md_file

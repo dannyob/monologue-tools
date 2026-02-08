@@ -50,7 +50,7 @@ def publish(file: Path, targets: tuple, dry_run: bool, canvas: bool):
         print_info(f"Subject: {entry.subject}")
         print_info(f"Body: {len(entry.body)} characters")
         print_info(f"Targets: {', '.join(targets)}")
-        for key in ("notion-id", "buttondown-id", "slack-ts"):
+        for key in ("notion_id", "buttondown_id", "slack_ts"):
             if key in meta:
                 print_info(f"Existing {key}: {meta[key]} (will update)")
         return
@@ -62,13 +62,13 @@ def publish(file: Path, targets: tuple, dry_run: bool, canvas: bool):
         url = _publish_notion(entry)
         results["notion"] = url
         if url:
-            metadata_updates["notion-id"] = url
+            metadata_updates["notion_id"] = url
 
     if "buttondown" in targets:
         email_id = _publish_buttondown(entry)
         results["buttondown"] = email_id
         if email_id:
-            metadata_updates["buttondown-id"] = email_id
+            metadata_updates["buttondown_id"] = email_id
 
     if "slack" in targets:
         slack_result = _publish_slack(
@@ -76,9 +76,9 @@ def publish(file: Path, targets: tuple, dry_run: bool, canvas: bool):
         )
         results["slack"] = slack_result
         if slack_result:
-            metadata_updates["slack-ts"] = slack_result
+            metadata_updates["slack_ts"] = slack_result
             channel = os.environ.get("SLACK_CHANNEL", "#monologue-danny")
-            metadata_updates["slack-channel"] = channel
+            metadata_updates["slack_channel"] = channel
 
     # Write metadata back to the source file for idempotent re-publishing
     if metadata_updates:
@@ -102,9 +102,9 @@ def info(file: Path):
     click.echo(f"Subject: {entry.subject}")
     if entry.notion_id:
         click.echo(f"Notion:  {entry.notion_id}")
-    for key in ("buttondown-id", "slack-ts", "slack-channel"):
+    for key in ("buttondown_id", "slack_ts", "slack_channel"):
         if key in entry.metadata:
-            click.echo(f"{key.title()}: {entry.metadata[key]}")
+            click.echo(f"{key}: {entry.metadata[key]}")
     click.echo(f"Body:    {len(entry.body)} characters")
 
 
@@ -123,7 +123,7 @@ def _publish_notion(entry) -> str | None:
 
     publisher = NotionPublisher(token, parent)
 
-    existing_url = entry.metadata.get("notion-id")
+    existing_url = entry.metadata.get("notion_id")
     if existing_url:
         url = publisher.update(existing_url, entry.subject, entry.body)
         print_success(f"Notion: updated {hyperlink(url)}")
@@ -166,7 +166,7 @@ def _publish_slack(entry, canvas=False, notion_url=None) -> str | None:
         print_success(f"Slack: canvas created in {channel}")
         return result.get("canvas_id")
 
-    existing_ts = entry.metadata.get("slack-ts")
+    existing_ts = entry.metadata.get("slack_ts")
     if existing_ts:
         result = publisher.update_message(
             existing_ts,

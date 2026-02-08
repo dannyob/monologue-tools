@@ -5,7 +5,10 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-METADATA_KEYS = frozenset(
+import yaml
+
+# Old email-header keys (for backward compat with archive files)
+_LEGACY_KEYS = frozenset(
     {
         "notion-id",
         "last-modified",
@@ -16,6 +19,15 @@ METADATA_KEYS = frozenset(
     }
 )
 
+# Map legacy hyphenated keys to new underscore keys
+_LEGACY_KEY_MAP = {
+    "notion-id": "notion_id",
+    "last-modified": "last_modified",
+    "buttondown-id": "buttondown_id",
+    "slack-ts": "slack_ts",
+    "slack-channel": "slack_channel",
+}
+
 
 @dataclass
 class MonologueEntry:
@@ -24,7 +36,7 @@ class MonologueEntry:
     title: str  # Just the title part (e.g., "Numbers, TechSoup, Krazam")
     date: date  # The date
     subject: str  # Full subject line (e.g., "2024-04-23: Numbers, TechSoup, Krazam")
-    body: str  # Markdown body content (after the H1/metadata header)
+    body: str  # Markdown body content (after the H1/frontmatter)
     source_path: Path | None = None
     notion_id: str | None = None
     metadata: dict = field(default_factory=dict)
@@ -37,9 +49,10 @@ class MonologueEntry:
 def parse_markdown_file(path: Path) -> MonologueEntry:
     """Parse a markdown file into a MonologueEntry.
 
-    Supports two formats:
-    1. Archive format with metadata headers (Notion-Id, Subject, etc.)
-    2. Plain markdown with an H1 containing a date
+    Supports three formats:
+    1. YAML frontmatter (--- delimited)
+    2. Legacy email-style metadata headers (Notion-Id, Subject, etc.)
+    3. Plain markdown with an H1 containing a date
     """
     text = path.read_text()
     return parse_markdown(text, source_path=path)
@@ -49,7 +62,44 @@ def parse_markdown(text: str, source_path: Path | None = None) -> MonologueEntry
     """Parse markdown text into a MonologueEntry."""
     lines = text.split("\n")
 
-    # Try archive format first (metadata headers at top)
+    # Try YAML frontmatter first (--- delimited)
+    if lines and lines[0].strip() == "---":
+        end = None
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                end = i
+                break
+        if end is not None:
+            frontmatter_text = "\n".join(lines[1:end])
+            meta = yaml.safe_load(frontmatter_text) or {}
+            body = "\n".join(lines[end + 1 :]).strip()
+
+            title = str(meta.get("title", ""))
+            entry_date = meta.get("date")
+            if isinstance(entry_date, date):
+                pass  # yaml.safe_load parses dates natively
+            elif isinstance(entry_date, str):
+                entry_date = date.fromisoformat(entry_date)
+            else:
+                entry_date = date.today()
+
+            subject = (
+                f"{entry_date.isoformat()}: {title}"
+                if title
+                else entry_date.isoformat()
+            )
+
+            return MonologueEntry(
+                title=title,
+                date=entry_date,
+                subject=subject,
+                body=body,
+                source_path=source_path,
+                notion_id=meta.get("notion_id"),
+                metadata=meta,
+            )
+
+    # Try legacy email-header format
     metadata = {}
     body_start = 0
     for i, line in enumerate(lines):
@@ -59,15 +109,17 @@ def parse_markdown(text: str, source_path: Path | None = None) -> MonologueEntry
         if ":" in line and not line.startswith("#"):
             key, _, value = line.partition(":")
             key = key.strip()
-            if key.lower() in METADATA_KEYS:
-                metadata[key.lower()] = value.strip()
+            if key.lower() in _LEGACY_KEYS:
+                # Convert to new underscore key names
+                new_key = _LEGACY_KEY_MAP.get(key.lower(), key.lower())
+                metadata[new_key] = value.strip()
             else:
                 break  # Not a metadata line
         else:
             break
 
     if "subject" in metadata:
-        subject = metadata["subject"]
+        subject = metadata.pop("subject")
         entry_date, title = _parse_date_title(subject)
         body = "\n".join(lines[body_start:]).strip()
         return MonologueEntry(
@@ -76,7 +128,7 @@ def parse_markdown(text: str, source_path: Path | None = None) -> MonologueEntry
             subject=subject,
             body=body,
             source_path=source_path,
-            notion_id=metadata.get("notion-id"),
+            notion_id=metadata.get("notion_id"),
             metadata=metadata,
         )
 
@@ -123,64 +175,51 @@ def _parse_date_title(text: str) -> tuple[date, str]:
 
 
 def write_metadata(path: Path, updates: dict[str, str]) -> None:
-    """Update metadata headers in a markdown file, preserving body content.
+    """Update YAML frontmatter in a markdown file, preserving body content.
 
-    If the file already has metadata headers, they are updated/extended.
-    If the file is plain markdown (H1 heading), metadata headers are prepended
-    and the H1 is converted to a Subject header.
+    If the file already has YAML frontmatter, it is updated/extended.
+    If the file has legacy email headers, they are converted to YAML frontmatter.
+    If the file is plain markdown (H1 heading), frontmatter is prepended.
     """
     text = path.read_text()
-    lines = text.split("\n")
+    entry = parse_markdown(text, source_path=path)
 
-    # Parse existing metadata headers
-    existing_meta = {}
-    body_start = 0
-    for i, line in enumerate(lines):
-        if line.strip() == "":
-            body_start = i + 1
-            break
-        if ":" in line and not line.startswith("#"):
-            key, _, value = line.partition(":")
-            key = key.strip()
-            if key.lower() in METADATA_KEYS:
-                existing_meta[key.lower()] = value.strip()
-            else:
-                break
-        else:
-            break
+    # Start with existing metadata
+    meta = dict(entry.metadata)
 
-    if existing_meta:
-        # File already has metadata - merge updates
-        for k, v in updates.items():
-            existing_meta[k.lower()] = v
-        body = "\n".join(lines[body_start:])
-    else:
-        # Plain markdown file - need to extract subject from H1
-        entry = parse_markdown(text, source_path=path)
-        existing_meta["subject"] = entry.subject
-        for k, v in updates.items():
-            existing_meta[k.lower()] = v
-        body = entry.body
+    # Always ensure title and date are in the frontmatter
+    if "title" not in meta:
+        meta["title"] = entry.title
+    if "date" not in meta:
+        meta["date"] = entry.date
 
-    # Write back: metadata headers + blank line + body
-    header_order = [
-        "notion-id",
-        "buttondown-id",
-        "slack-ts",
-        "slack-channel",
-        "last-modified",
-        "subject",
+    # Apply updates
+    for k, v in updates.items():
+        meta[k] = v
+
+    # Order keys nicely for the YAML output
+    key_order = [
+        "title",
+        "date",
+        "notion_id",
+        "buttondown_id",
+        "slack_ts",
+        "slack_channel",
+        "last_modified",
     ]
-    header_lines = []
-    for key in header_order:
-        if key in existing_meta:
-            # Capitalize header names nicely
-            nice_key = key.title().replace("-", "-")
-            header_lines.append(f"{nice_key}: {existing_meta[key]}")
-    # Any remaining keys not in the order
-    for key, value in existing_meta.items():
-        if key not in header_order:
-            nice_key = key.title().replace("-", "-")
-            header_lines.append(f"{nice_key}: {value}")
+    ordered_meta = {}
+    for key in key_order:
+        if key in meta:
+            ordered_meta[key] = meta[key]
+    for key, value in meta.items():
+        if key not in ordered_meta:
+            ordered_meta[key] = value
 
-    path.write_text("\n".join(header_lines) + "\n\n" + body + "\n")
+    frontmatter = yaml.dump(
+        ordered_meta,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+    ).rstrip()
+
+    path.write_text(f"---\n{frontmatter}\n---\n\n{entry.body}\n")
